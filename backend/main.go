@@ -62,7 +62,7 @@ func main() {
 
 	// Кастомное логирование запросов
 	router.Use(middleware.RequestLogger(logger))
-	
+
 	// Health check
 	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -99,6 +99,7 @@ func main() {
 		// Инциденты
 		r.Route("/incidents", func(r chi.Router) {
 			r.Get("/", handler.GetIncidents)
+			r.Get("/stats", handler.GetIncidentStats)
 			r.Get("/{id}", handler.GetIncident)
 			r.Put("/{id}/status", handler.UpdateIncidentStatus)
 		})

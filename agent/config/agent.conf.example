@@ -1,0 +1,13 @@
+[agent]
+id=workstation-001
+hostname=my-pc
+
+[server]
+url=http://localhost:8080
+
+[monitoring]
+directories=~/Documents ~/Desktop
+
+[logs]
+level=info
+file=~/dlp_agent.log

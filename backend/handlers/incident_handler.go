@@ -79,3 +79,16 @@ func (h *Handler) UpdateIncidentStatus(w http.ResponseWriter, r *http.Request) {
 		"message": "Статус инцидента обновлен",
 	})
 }
+
+// GetIncidentStats - получение статистики по инцидентам
+func (h *Handler) GetIncidentStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.store.GetIncidentStats(r.Context())
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Ошибка получения статистики инцидентов")
+		http.Error(w, "Ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stats)
+}

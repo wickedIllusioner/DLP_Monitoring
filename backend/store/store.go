@@ -33,6 +33,7 @@ type Store interface {
 	GetIncidents(ctx context.Context) ([]models.Incident, error)
 	GetIncident(ctx context.Context, id int64) (*models.Incident, error)
 	UpdateIncidentStatus(ctx context.Context, incident *models.Incident) error
+	GetIncidentStats(ctx context.Context) (*models.IncidentStats, error)
 
 	Close() error
 }

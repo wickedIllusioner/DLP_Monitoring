@@ -34,3 +34,21 @@ type IncidentUpdate struct {
 	Status     string `json:"status" validate:"required"`
 	ResolvedBy string `json:"resolved_by,omitempty"`
 }
+
+// IncidentStats - статистика по инцидентам
+type IncidentStats struct {
+	TotalIncidents int64 `json:"total_incidents"`
+	NewIncidents   int64 `json:"new_incidents"`
+	Investigating  int64 `json:"investigating"`
+	Resolved       int64 `json:"resolved"`
+	FalsePositive  int64 `json:"false_positive"`
+
+	SeverityStats   []SeverityCount `json:"severity_stats"`
+	RecentIncidents []Incident      `json:"recent_incidents"`
+}
+
+// SeverityCount - кол-во инцидентов по уровням серьезности
+type SeverityCount struct {
+	Severity string `json:"severity"`
+	Count    int64  `json:"count"`
+}
