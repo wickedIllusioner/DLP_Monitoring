@@ -11,7 +11,7 @@ struct DlpPolicy {
     QString name;
     QString description;
     QString pattern;
-    QString severity;  // "info", "low", "medium", "high", "critical"
+    QString severity;
     bool isActive;
     QDateTime createdAt;
     QDateTime updatedAt;
@@ -31,10 +31,14 @@ struct Incident {
     QString policyName;
     QString agentHostname;
     QString matchedContent;
-    QString status;  // "new", "investigating", "resolved", "false_positive"
+    QString status;
     QDateTime createdAt;
     QDateTime resolvedAt;
     QString resolvedBy;
+
+    int eventId;
+    QString agentId;
+    QString policyId;
 
     static Incident fromJson(const QJsonObject &json);
 };
@@ -45,7 +49,7 @@ struct Event {
     QString agentId;
     QString filePath;
     QString fileName;
-    QString eventType;  // "created", "modified", "deleted", "renamed", "accessed"
+    QString eventType;
     qint64 fileSize;
     QString contentSample;
     bool isViolation;

@@ -44,11 +44,28 @@ type IncidentStats struct {
 	FalsePositive  int64 `json:"false_positive"`
 
 	SeverityStats   []SeverityCount `json:"severity_stats"`
-	RecentIncidents []Incident      `json:"recent_incidents"`
+	PolicyStats     []PolicyCount   `json:"policy_stats"`
+	AgentStats      []AgentCount    `json:"agent_stats"`
+	RecentIncidents []Incident      `json:"recent_incidents,omitempty"`
 }
 
 // SeverityCount - кол-во инцидентов по уровням серьезности
 type SeverityCount struct {
 	Severity string `json:"severity"`
 	Count    int64  `json:"count"`
+}
+
+// PolicyCount - количество инцидентов по политикам
+type PolicyCount struct {
+	PolicyID   *int64 `json:"policy_id,omitempty"`
+	PolicyName string `json:"policy_name"`
+	Count      int64  `json:"count"`
+}
+
+// AgentCount - количество инцидентов по агентам
+type AgentCount struct {
+	AgentID   int64  `json:"agent_id"`
+	Hostname  string `json:"hostname"`
+	AgentUUID string `json:"agent_uuid"`
+	Count     int64  `json:"count"`
 }

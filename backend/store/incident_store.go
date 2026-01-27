@@ -164,6 +164,85 @@ func (s *GormStore) GetIncidentStats(ctx context.Context) (*models.IncidentStats
 		}
 	}
 
+	// Статистика по политикам
+	var policyStats []models.PolicyCount
+
+	// Получаем все политики с количеством инцидентов
+	var policies []models.Policy
+	if err := s.db.WithContext(ctx).Find(&policies).Error; err != nil {
+		return nil, err
+	}
+
+	for _, policy := range policies {
+		var count int64
+		if err := s.db.WithContext(ctx).
+			Model(&models.Incident{}).
+			Where("policy_id = ?", policy.ID).
+			Count(&count).Error; err != nil {
+			return nil, err
+		}
+
+		if count > 0 {
+			policyStats = append(policyStats, models.PolicyCount{
+				PolicyID:   &policy.ID,
+				PolicyName: policy.Name,
+				Count:      count,
+			})
+		}
+	}
+
+	// Инциденты без политики
+	var unknownCount int64
+	if err := s.db.WithContext(ctx).
+		Model(&models.Incident{}).
+		Where("policy_id IS NULL").
+		Count(&unknownCount).Error; err != nil {
+		return nil, err
+	}
+
+	if unknownCount > 0 {
+		policyStats = append(policyStats, models.PolicyCount{
+			PolicyID:   nil,
+			PolicyName: "Неизвестная политика",
+			Count:      unknownCount,
+		})
+	}
+
+	stats.PolicyStats = policyStats
+
+	// Статистика по агентам
+	var agentStats []models.AgentCount
+
+	// Получаем всех агентов с событиями
+	var agents []models.Agent
+	if err := s.db.WithContext(ctx).Find(&agents).Error; err != nil {
+		return nil, err
+	}
+
+	for _, agent := range agents {
+		var count int64
+
+		// Считаем инциденты через события агента
+		if err := s.db.WithContext(ctx).
+			Model(&models.Incident{}).
+			Joins("JOIN events ON incidents.event_id = events.id").
+			Where("events.agent_id = ?", agent.ID).
+			Count(&count).Error; err != nil {
+			return nil, err
+		}
+
+		if count > 0 {
+			agentStats = append(agentStats, models.AgentCount{
+				AgentID:   agent.ID,
+				Hostname:  agent.Hostname,
+				AgentUUID: agent.AgentUUID,
+				Count:     count,
+			})
+		}
+	}
+
+	stats.AgentStats = agentStats
+
 	// Последние 10 инцидентов
 	var recentIncidents []models.Incident
 	recentQuery := s.db.WithContext(ctx).

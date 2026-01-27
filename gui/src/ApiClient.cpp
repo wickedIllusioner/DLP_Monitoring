@@ -214,22 +214,27 @@ void ApiClient::onReplyFinished(QNetworkReply *reply)
             }
         } else if (reply->operation() == QNetworkAccessManager::PostOperation) {
             if (doc.isObject()) {
-                emit policyCreated(doc.object());
+                QJsonObject response = doc.object();
+                if (response.contains("id") && response.contains("message")) {
+                    emit policyCreated(response);
+                } else {
+                    emit errorOccurred("Неверный ответ при создании политики");
+                }
             }
         } else if (reply->operation() == QNetworkAccessManager::PutOperation) {
             QStringList parts = urlPath.split('/');
-            if (parts.size() > 0) {
+            if (parts.size() >= 4) {  // /api/v1/policies/{id}
                 bool ok;
-                int id = parts.last().toInt(&ok);
+                int id = parts.at(3).toInt(&ok);
                 if (ok) {
                     emit policyUpdated(id);
                 }
             }
         } else if (reply->operation() == QNetworkAccessManager::DeleteOperation) {
             QStringList parts = urlPath.split('/');
-            if (parts.size() > 0) {
+            if (parts.size() >= 4) {  // /api/v1/policies/{id}
                 bool ok;
-                int id = parts.last().toInt(&ok);
+                int id = parts.at(3).toInt(&ok);
                 if (ok) {
                     emit policyDeleted(id);
                 }

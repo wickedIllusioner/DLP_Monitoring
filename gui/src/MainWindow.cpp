@@ -1,19 +1,17 @@
 #include "../include/MainWindow.h"
 #include "../include/Dialogs.h"
+#include "../widgets/include/StatisticsTabWidget.h"
 #include <QApplication>
-#include <QMenuBar>
+#include <QSortFilterProxyModel>
 #include <QToolBar>
 #include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QGroupBox>
 #include <QHeaderView>
 #include <QMessageBox>
-#include <QDateEdit>
-#include <QMenu>
-#include <QAction>
-#include <QKeySequence>
+#include <QInputDialog>
 #include <algorithm>
-#include <QDebug>
+
+using namespace std;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -28,8 +26,7 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 
-void MainWindow::setupUI()
-{
+void MainWindow::setupUI() {
     setWindowTitle("DLP Monitoring System");
     setMinimumSize(1024, 768);
 
@@ -45,73 +42,41 @@ void MainWindow::setupUI()
     setupStatusBar();
 }
 
-void MainWindow::setupConnections()
-{
+void MainWindow::setupConnections() {
     // API сигналы
     connect(m_apiClient, &ApiClient::policiesFetched, this, &MainWindow::onPoliciesFetched);
     connect(m_apiClient, &ApiClient::incidentsFetched, this, &MainWindow::onIncidentsFetched);
+    connect(m_apiClient, &ApiClient::incidentStatusUpdated, this, &MainWindow::onIncidentStatusUpdated);
     connect(m_apiClient, &ApiClient::eventsFetched, this, &MainWindow::onEventsFetched);
     connect(m_apiClient, &ApiClient::agentsFetched, this, &MainWindow::onAgentsFetched);
     connect(m_apiClient, &ApiClient::statisticsFetched, this, &MainWindow::onStatisticsFetched);
     connect(m_apiClient, &ApiClient::errorOccurred, this, &MainWindow::onErrorOccurred);
+    connect(m_apiClient, &ApiClient::policyCreated, this, &MainWindow::onPolicyCreated);
+    connect(m_apiClient, &ApiClient::policyUpdated, this, &MainWindow::onPolicyUpdated);
+    connect(m_apiClient, &ApiClient::policyDeleted, this, &MainWindow::onPolicyDeleted);
 
     // Кнопки
     connect(m_btnAddPolicy, &QPushButton::clicked, this, &MainWindow::onAddPolicy);
     connect(m_btnEditPolicy, &QPushButton::clicked, this, &MainWindow::onEditPolicy);
     connect(m_btnDeletePolicy, &QPushButton::clicked, this, &MainWindow::onDeletePolicy);
     connect(m_btnRefresh, &QPushButton::clicked, this, &MainWindow::onRefreshData);
-    connect(m_btnFilter, &QPushButton::clicked, this, &MainWindow::onFilterIncidents);
-    connect(m_btnExport, &QPushButton::clicked, this, &MainWindow::onExportData);
+    connect(m_btnChangeStatus, &QPushButton::clicked, this, &MainWindow::onChangeIncidentStatus);
 
     // Таймер автообновления
     connect(m_autoRefreshTimer, &QTimer::timeout, this, &MainWindow::onRefreshData);
+
+    connect(m_severityFilter, &QComboBox::currentTextChanged, this, &MainWindow::onFilterChanged);
+    connect(m_statusFilter, &QComboBox::currentTextChanged, this, &MainWindow::onFilterChanged);
 }
 
-void MainWindow::setupMenuBar()
-{
-    QMenuBar *menuBar = new QMenuBar(this);
-    setMenuBar(menuBar);
 
-    // Меню File
-    QMenu *fileMenu = menuBar->addMenu("Файл");
-    fileMenu->addAction("Экспорт...", this, &MainWindow::onExportData);
-    fileMenu->addSeparator();
-    fileMenu->addAction("Выход", qApp, &QApplication::quit);
-
-    // Меню View
-    QMenu *viewMenu = menuBar->addMenu("Вид");
-    QAction *refreshAction = new QAction("Обновить", this);
-    refreshAction->setShortcut(QKeySequence::Refresh);
-    connect(refreshAction, &QAction::triggered, this, &MainWindow::onRefreshData);
-    viewMenu->addAction(refreshAction);
-
-    // Меню Settings
-    QMenu *settingsMenu = menuBar->addMenu("Настройки");
-    settingsMenu->addAction("Автообновление...");
-
-    // Меню Help
-    QMenu *helpMenu = menuBar->addMenu("Помощь");
-    helpMenu->addAction("О программе");
-}
-
-void MainWindow::setupToolBar()
-{
+void MainWindow::setupToolBar() {
     QToolBar *toolBar = addToolBar("Панель инструментов");
     toolBar->setMovable(false);
 
     // Кнопка обновления
     m_btnRefresh = new QPushButton("Обновить", this);
     toolBar->addWidget(m_btnRefresh);
-
-    toolBar->addSeparator();
-
-    // Кнопка фильтра
-    m_btnFilter = new QPushButton("Фильтр", this);
-    toolBar->addWidget(m_btnFilter);
-
-    // Кнопка экспорта
-    m_btnExport = new QPushButton("Экспорт", this);
-    toolBar->addWidget(m_btnExport);
 
     toolBar->addSeparator();
 
@@ -126,8 +91,7 @@ void MainWindow::setupToolBar()
     toolBar->addWidget(new QLabel(this));
 }
 
-void MainWindow::setupTabs()
-{
+void MainWindow::setupTabs() {
     m_tabWidget = new QTabWidget(this);
 
     // ============ Вкладка инцидентов ============
@@ -144,35 +108,49 @@ void MainWindow::setupTabs()
     m_statusFilter = new QComboBox(filterGroup);
     m_statusFilter->addItems({"Все", "new", "investigating", "resolved", "false_positive"});
 
-    m_dateFromFilter = new QDateEdit(filterGroup);
-    m_dateFromFilter->setCalendarPopup(true);
-    m_dateFromFilter->setDate(QDate::currentDate().addDays(-7));
-
-    m_dateToFilter = new QDateEdit(filterGroup);
-    m_dateToFilter->setCalendarPopup(true);
-    m_dateToFilter->setDate(QDate::currentDate());
-
     filterLayout->addWidget(new QLabel("Серьезность:"));
     filterLayout->addWidget(m_severityFilter);
     filterLayout->addWidget(new QLabel("Статус:"));
     filterLayout->addWidget(m_statusFilter);
-    filterLayout->addWidget(new QLabel("С:"));
-    filterLayout->addWidget(m_dateFromFilter);
-    filterLayout->addWidget(new QLabel("По:"));
-    filterLayout->addWidget(m_dateToFilter);
 
     incidentsLayout->addWidget(filterGroup);
 
+    // Изменение статуса инцидента
+    QHBoxLayout *incidentsButtonsLayout = new QHBoxLayout();
+    m_btnChangeStatus = new QPushButton("Изменить статус", m_incidentsTab);
+    incidentsButtonsLayout->addWidget(m_btnChangeStatus);
+    incidentsButtonsLayout->addStretch();
+    incidentsLayout->addLayout(incidentsButtonsLayout);
+
     // Таблица инцидентов
     m_incidentsTable = new QTableView(m_incidentsTab);
-    m_incidentsModel = new QStandardItemModel(0, 6, this);
+    m_incidentsModel = new QStandardItemModel(0, 8, this);
     m_incidentsModel->setHorizontalHeaderLabels(
-        QStringList() << "ID" << "Файл" << "Серьезность" << "Политика" << "Агент" << "Время");
-    m_incidentsTable->setModel(m_incidentsModel);
+        QStringList() << "ID" << "Файл" << "Путь" << "Серьезность" << "Статус" << "Политика" << "Агент" << "Время");
+
+    m_incidentsProxyModel = new QSortFilterProxyModel(this);
+    m_incidentsProxyModel->setSourceModel(m_incidentsModel);
+    m_incidentsProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+    m_incidentsTable->setModel(m_incidentsProxyModel);
+
+    m_incidentsTable->horizontalHeader()->setStretchLastSection(false);
+    m_incidentsTable->setColumnWidth(0, 50);   // ID
+    m_incidentsTable->setColumnWidth(1, 150);  // Файл
+    m_incidentsTable->setColumnWidth(2, 400);  // Путь
+    m_incidentsTable->setColumnWidth(3, 100);  // Серьезность
+    m_incidentsTable->setColumnWidth(4, 150);  // Политика
+    m_incidentsTable->setColumnWidth(5, 150);  // Агент
+    m_incidentsTable->setColumnWidth(6, 150);  // Время
+    m_incidentsTable->setWordWrap(true);
+
+    m_incidentsTable->setSortingEnabled(true);
     m_incidentsTable->horizontalHeader()->setStretchLastSection(true);
+    m_incidentsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    m_incidentsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_incidentsTable->setSelectionMode(QAbstractItemView::SingleSelection);
 
     incidentsLayout->addWidget(m_incidentsTable);
-
     m_tabWidget->addTab(m_incidentsTab, "Инциденты");
 
     // ============ Вкладка политик ============
@@ -199,10 +177,21 @@ void MainWindow::setupTabs()
         QStringList() << "ID" << "Название" << "Паттерн" << "Серьезность" << "Активна");
     m_policiesTable->setModel(m_policiesModel);
     m_policiesTable->horizontalHeader()->setStretchLastSection(true);
+    m_policiesTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    m_policiesTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_policiesTable->setSelectionMode(QAbstractItemView::SingleSelection);
+
+    // Редактирование по двойному клику
+    connect(m_policiesTable, &QTableView::doubleClicked, [this](const QModelIndex &index) {
+        if (index.isValid()) {
+            onEditPolicy();
+        }
+    });
 
     policiesLayout->addWidget(m_policiesTable);
-
     m_tabWidget->addTab(m_policiesTab, "Политики");
+
 
     // ============ Вкладка событий ============
     m_eventsTab = new QWidget();
@@ -214,10 +203,14 @@ void MainWindow::setupTabs()
         QStringList() << "ID" << "Агент" << "Файл" << "Тип" << "Нарушение" << "Время");
     m_eventsTable->setModel(m_eventsModel);
     m_eventsTable->horizontalHeader()->setStretchLastSection(true);
+    m_eventsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    m_eventsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_eventsTable->setSelectionMode(QAbstractItemView::SingleSelection);
 
     eventsLayout->addWidget(m_eventsTable);
-
     m_tabWidget->addTab(m_eventsTab, "События");
+
 
     // ============ Вкладка агентов ============
     m_agentsTab = new QWidget();
@@ -229,26 +222,26 @@ void MainWindow::setupTabs()
         QStringList() << "ID" << "Имя хоста" << "IP" << "ОС" << "Последний контакт");
     m_agentsTable->setModel(m_agentsModel);
     m_agentsTable->horizontalHeader()->setStretchLastSection(true);
+    m_agentsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    m_agentsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_agentsTable->setSelectionMode(QAbstractItemView::SingleSelection);
 
     agentsLayout->addWidget(m_agentsTable);
-
     m_tabWidget->addTab(m_agentsTab, "Агенты");
+
 
     // ============ Вкладка статистики ============
     m_statisticsTab = new QWidget();
     QVBoxLayout *statsLayout = new QVBoxLayout(m_statisticsTab);
 
-    // Заглушка для статистики
-    QLabel *statsLabel = new QLabel("Статистика будет отображаться здесь", m_statisticsTab);
-    statsLabel->setAlignment(Qt::AlignCenter);
-    statsLabel->setStyleSheet("font-size: 14pt; color: gray;");
-    statsLayout->addWidget(statsLabel);
+    StatisticsTabWidget *statsWidget = new StatisticsTabWidget(m_statisticsTab);
+    statsLayout->addWidget(statsWidget);
 
     m_tabWidget->addTab(m_statisticsTab, "Статистика");
 }
 
-void MainWindow::setupStatusBar()
-{
+void MainWindow::setupStatusBar() {
     m_statusBar = statusBar();
 
     m_statusLabel = new QLabel("Готово", this);
@@ -260,8 +253,7 @@ void MainWindow::setupStatusBar()
 
 // ==================== Слоты для кнопок ====================
 
-void MainWindow::onAddPolicy()
-{
+void MainWindow::onAddPolicy() {
     PolicyDialog dialog(PolicyDialog::Create, this);
 
     if (dialog.exec() == QDialog::Accepted) {
@@ -272,8 +264,7 @@ void MainWindow::onAddPolicy()
     }
 }
 
-void MainWindow::onEditPolicy()
-{
+void MainWindow::onEditPolicy() {
     QModelIndex currentIndex = m_policiesTable->currentIndex();
 
     if (!currentIndex.isValid()) {
@@ -295,8 +286,7 @@ void MainWindow::onEditPolicy()
     }
 }
 
-void MainWindow::onDeletePolicy()
-{
+void MainWindow::onDeletePolicy() {
     QModelIndex currentIndex = m_policiesTable->currentIndex();
 
     if (!currentIndex.isValid()) {
@@ -321,8 +311,7 @@ void MainWindow::onDeletePolicy()
     }
 }
 
-void MainWindow::onRefreshData()
-{
+void MainWindow::onRefreshData() {
     m_statusLabel->setText("Загрузка данных...");
     m_apiClient->fetchPolicies();
     m_apiClient->fetchIncidents();
@@ -331,31 +320,45 @@ void MainWindow::onRefreshData()
     m_apiClient->fetchStatistics();
 }
 
-void MainWindow::onFilterIncidents()
-{
-    // Простая фильтрация по выбранным параметрам
-    QString severity = m_severityFilter->currentText();
-    QString status = m_statusFilter->currentText();
-    QDate dateFrom = m_dateFromFilter->date();
-    QDate dateTo = m_dateToFilter->date();
+void MainWindow::onChangeIncidentStatus() {
+    QModelIndex currentIndex = m_incidentsTable->currentIndex();
 
-    m_statusLabel->setText("Применение фильтров...");
-    m_apiClient->fetchIncidents(
-        QDateTime(dateFrom, QTime(0, 0)),
-        QDateTime(dateTo, QTime(23, 59, 59))
-    );
-}
+    if (!currentIndex.isValid()) {
+        QMessageBox::warning(this, "Внимание", "Выберите инцидент для изменения статуса");
+        return;
+    }
 
-void MainWindow::onExportData()
-{
-    QMessageBox::information(this, "Экспорт",
-        "Функция экспорта будет реализована позже");
+    int row = currentIndex.row();
+    if (row >= 0 && row < m_incidents.size()) {
+        Incident incident = m_incidents[row];
+
+        QStringList statusList = {"new", "investigating", "resolved", "false_positive"};
+        QString newStatus = QInputDialog::getItem(this,
+            QString("Изменение статуса инцидента #%1").arg(incident.id),
+            "Выберите новый статус:", statusList, statusList.indexOf(incident.status), false);
+
+        if (!newStatus.isEmpty() && newStatus != incident.status) {
+            QString resolvedBy;
+            if (newStatus == "resolved") {
+                resolvedBy = QInputDialog::getText(this, "Кем разрешено",
+                    "Введите имя/идентификатор пользователя:");
+
+                if (resolvedBy.isEmpty()) {
+                    QMessageBox::warning(this, "Ошибка",
+                        "Для статуса 'resolved' необходимо указать, кем разрешено");
+                    return;
+                }
+            }
+
+            m_apiClient->updateIncidentStatus(incident.id, newStatus, resolvedBy);
+            m_statusLabel->setText(QString("Изменение статуса инцидента #%1...").arg(incident.id));
+        }
+    }
 }
 
 // ==================== Слоты ответов API ====================
 
-void MainWindow::onPoliciesFetched(const QJsonArray &policies)
-{
+void MainWindow::onPoliciesFetched(const QJsonArray &policies) {
     m_policies.clear();
     m_policiesModel->removeRows(0, m_policiesModel->rowCount());
 
@@ -377,8 +380,7 @@ void MainWindow::onPoliciesFetched(const QJsonArray &policies)
     m_statusLabel->setText(QString("Политики загружены: %1").arg(m_policies.size()));
 }
 
-void MainWindow::onIncidentsFetched(const QJsonArray &incidents)
-{
+void MainWindow::onIncidentsFetched(const QJsonArray &incidents) {
     m_incidents.clear();
     m_incidentsModel->removeRows(0, m_incidentsModel->rowCount());
 
@@ -387,28 +389,59 @@ void MainWindow::onIncidentsFetched(const QJsonArray &incidents)
         m_incidents.append(incident);
 
         QList<QStandardItem*> items;
-        items.append(new QStandardItem(QString::number(incident.id)));
-        items.append(new QStandardItem(incident.fileName));
 
-        // Серьезность с цветом
+        // ID
+        QStandardItem *idItem = new QStandardItem(QString::number(incident.id));
+        idItem->setEditable(false);
+        items.append(idItem);
+
+        // Файл
+        QStandardItem *fileItem = new QStandardItem(incident.fileName);
+        fileItem->setEditable(false);
+        items.append(fileItem);
+
+        // Путь к файлу
+        QStandardItem *filePath = new QStandardItem(incident.filePath);
+        filePath->setEditable(false);
+        items.append(filePath);
+
+        // Серьезность инцидента
         QStandardItem *severityItem = new QStandardItem(incident.severity);
+        severityItem->setEditable(false);
         if (incident.severity == "critical") severityItem->setBackground(Qt::red);
         else if (incident.severity == "high") severityItem->setBackground(QColor(255, 165, 0));
         else if (incident.severity == "medium") severityItem->setBackground(Qt::yellow);
+        else if (incident.severity == "low") severityItem->setBackground(Qt::green);
         items.append(severityItem);
 
-        items.append(new QStandardItem(incident.policyName));
-        items.append(new QStandardItem(incident.agentHostname));
-        items.append(new QStandardItem(incident.createdAt.toString("dd.MM.yyyy HH:mm")));
+        // Статус
+        QStandardItem *statusItem = new QStandardItem(incident.status);
+        statusItem->setEditable(false);
+        items.append(statusItem);
+
+        // Политика
+        QStandardItem *policyItem = new QStandardItem(incident.policyName);
+        policyItem->setEditable(false);
+        items.append(policyItem);
+
+        // Агент
+        QStandardItem *agentItem = new QStandardItem(incident.agentHostname);
+        agentItem->setEditable(false);
+        items.append(agentItem);
+
+        // Время
+        QStandardItem *timeItem = new QStandardItem(incident.createdAt.toString("dd.MM.yyyy HH:mm"));
+        timeItem->setEditable(false);
+        items.append(timeItem);
 
         m_incidentsModel->appendRow(items);
     }
 
     updateStatusBar();
+    onFilterChanged();
 }
 
-void MainWindow::onEventsFetched(const QJsonArray &events)
-{
+void MainWindow::onEventsFetched(const QJsonArray &events) {
     m_events.clear();
     m_eventsModel->removeRows(0, m_eventsModel->rowCount());
 
@@ -430,14 +463,15 @@ void MainWindow::onEventsFetched(const QJsonArray &events)
     m_statusLabel->setText(QString("События загружены: %1").arg(m_events.size()));
 }
 
-void MainWindow::onAgentsFetched(const QJsonArray &agents)
-{
+void MainWindow::onAgentsFetched(const QJsonArray &agents) {
     m_agents.clear();
     m_agentsModel->removeRows(0, m_agentsModel->rowCount());
 
+    int onlineCount;
     for (const QJsonValue &value : agents) {
         Agent agent = Agent::fromJson(value.toObject());
         m_agents.append(agent);
+        if (agent.isOnline) onlineCount++;
 
         QList<QStandardItem*> items;
         items.append(new QStandardItem(QString::number(agent.id)));
@@ -460,26 +494,89 @@ void MainWindow::onAgentsFetched(const QJsonArray &agents)
     }
 
     m_statusLabel->setText(QString("Агенты загружены: %1 онлайн").arg(
-        std::count_if(m_agents.begin(), m_agents.end(),
+        count_if(m_agents.begin(), m_agents.end(),
                       [](const Agent &a) { return a.isOnline; })));
 }
 
-void MainWindow::onStatisticsFetched(const QJsonObject &stats)
-{
+void MainWindow::onStatisticsFetched(const QJsonObject &stats) {
+    StatsData data;
+
+    data.totalIncidents = stats["total_incidents"].toInt();
+    data.newIncidents = stats["new_incidents"].toInt();
+    data.investigating = stats["investigating"].toInt();
+    data.resolved = stats["resolved"].toInt();
+    data.falsePositive = stats["false_positive"].toInt();
+
+    // Серьезность
+    QJsonArray severityStats = stats["severity_stats"].toArray();
+    for (const QJsonValue &severity : severityStats) {
+        QJsonObject sevObj = severity.toObject();
+        QString sev = sevObj["severity"].toString();
+        int count = sevObj["count"].toInt();
+
+        if (sev == "critical") data.severity.critical = count;
+        else if (sev == "high") data.severity.high = count;
+        else if (sev == "medium") data.severity.medium = count;
+        else if (sev == "low") data.severity.low = count;
+        else if (sev == "info") data.severity.info = count;
+    }
+
+    // Политики из policy_stats
+    QJsonArray policyStats = stats["policy_stats"].toArray();
+    for (const QJsonValue &policy : policyStats) {
+        QJsonObject policyObj = policy.toObject();
+        QString policyName = policyObj["policy_name"].toString();
+        int count = policyObj["count"].toInt();
+        data.incidentsByPolicy[policyName] = count;
+    }
+
+    // Агенты из agent_stats
+    QJsonArray agentStats = stats["agent_stats"].toArray();
+    for (const QJsonValue &agent : agentStats) {
+        QJsonObject agentObj = agent.toObject();
+        QString hostname = agentObj["hostname"].toString();
+        int count = agentObj["count"].toInt();
+        data.incidentsByAgent[hostname] = count;
+    }
+
+    StatisticsTabWidget *statsWidget = m_statisticsTab->findChild<StatisticsTabWidget*>();
+    if (statsWidget) {
+        statsWidget->updateStatistics(data);
+    }
+
     updateStatusBar();
     m_statusLabel->setText("Статистика обновлена");
 }
 
-void MainWindow::onErrorOccurred(const QString &error)
-{
+void MainWindow::onErrorOccurred(const QString &error) {
     m_statusLabel->setText("Ошибка: " + error);
     QMessageBox::warning(this, "Ошибка", error);
 }
 
+void MainWindow::onPolicyCreated(const QJsonObject &policy) {
+    m_apiClient->fetchPolicies();
+    m_statusLabel->setText("Политика успешно создана");
+}
+
+void MainWindow::onPolicyUpdated(int id) {
+    m_apiClient->fetchPolicies();
+    m_statusLabel->setText(QString("Политика #%1 успешно обновлена").arg(id));
+}
+
+void MainWindow::onPolicyDeleted(int id) {
+    m_apiClient->fetchPolicies();
+    m_statusLabel->setText(QString("Политика #%1 успешно удалена").arg(id));
+}
+
+void MainWindow::onIncidentStatusUpdated(int id) {
+    m_apiClient->fetchIncidents();
+    m_statusLabel->setText(QString("Статус инцидента #%1 изменен").arg(id));
+}
+
+
 // ==================== Слоты обновления интерфейса ====================
 
-void MainWindow::updateStatusBar()
-{
+void MainWindow::updateStatusBar() {
     int incidentsCount = m_incidents.size();
     int policiesCount = m_policies.size();
     int agentsCount = m_agents.size();
@@ -488,4 +585,36 @@ void MainWindow::updateStatusBar()
                        .arg(incidentsCount).arg(policiesCount).arg(agentsCount);
 
     m_statsLabel->setText(statsText);
+}
+
+void MainWindow::onFilterChanged() {
+    QString severityFilter = m_severityFilter->currentText();
+    QString statusFilter = m_statusFilter->currentText();
+
+    m_incidentsProxyModel->setFilterKeyColumn(-1);
+
+    for (int i = 0; i < m_incidentsProxyModel->rowCount(); ++i) {
+        m_incidentsTable->setRowHidden(i, false);
+    }
+
+    if (severityFilter != "Все" && statusFilter != "Все") {
+        m_incidentsProxyModel->setFilterFixedString("");
+
+        for (int i = 0; i < m_incidentsProxyModel->rowCount(); ++i) {
+            QString severity = m_incidentsProxyModel->data(m_incidentsProxyModel->index(i, 3)).toString();
+            QString status = m_incidentsProxyModel->data(m_incidentsProxyModel->index(i, 4)).toString();
+
+            bool match = (severity == severityFilter && status == statusFilter);
+            m_incidentsTable->setRowHidden(i, !match);
+        }
+    }
+    else if (severityFilter != "Все") {
+        m_incidentsProxyModel->setFilterFixedString(severityFilter);
+    }
+    else if (statusFilter != "Все") {
+        m_incidentsProxyModel->setFilterFixedString(statusFilter);
+    }
+    else {
+        m_incidentsProxyModel->setFilterFixedString("");
+    }
 }

@@ -10,6 +10,7 @@
 #include <QStatusBar>
 #include <QTimer>
 #include <QDateEdit>
+#include <QSortFilterProxyModel>
 #include <QStandardItemModel>
 #include "ApiClient.h"
 #include "DataModels.h"
@@ -27,8 +28,7 @@ private slots:
     void onEditPolicy();
     void onDeletePolicy();
     void onRefreshData();
-    void onFilterIncidents();
-    void onExportData();
+    void onChangeIncidentStatus();
 
     // Слоты ответов API
     void onPoliciesFetched(const QJsonArray &policies);
@@ -37,6 +37,11 @@ private slots:
     void onAgentsFetched(const QJsonArray &agents);
     void onStatisticsFetched(const QJsonObject &stats);
     void onErrorOccurred(const QString &error);
+    void onPolicyCreated(const QJsonObject& policy);
+    void onPolicyUpdated(int id);
+    void onPolicyDeleted(int id);
+    void onIncidentStatusUpdated(int id);
+    void onFilterChanged();
 
     // Слоты обновления интерфейса
     void updateStatusBar();
@@ -70,14 +75,11 @@ private:
     QPushButton *m_btnEditPolicy;
     QPushButton *m_btnDeletePolicy;
     QPushButton *m_btnRefresh;
-    QPushButton *m_btnFilter;
-    QPushButton *m_btnExport;
+    QPushButton *m_btnChangeStatus;
 
     // Фильтры
     QComboBox *m_severityFilter;
     QComboBox *m_statusFilter;
-    QDateEdit *m_dateFromFilter;
-    QDateEdit *m_dateToFilter;
 
     // Статус бар
     QStatusBar *m_statusBar;
@@ -101,6 +103,8 @@ private:
 
     // Таймер автообновления
     QTimer *m_autoRefreshTimer;
+
+    QSortFilterProxyModel* m_incidentsProxyModel;
 };
 
 #endif //MAINWINDOW_H

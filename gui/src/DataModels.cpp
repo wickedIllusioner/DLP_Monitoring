@@ -42,34 +42,26 @@ Incident Incident::fromJson(const QJsonObject &json)
     Incident incident;
 
     incident.id = json["id"].toInt();
-
-    if (json.contains("file_name")) {
-        incident.fileName = json["file_name"].toString();
-    }
-
-    if (json.contains("file_path")) {
-        incident.filePath = json["file_path"].toString();
-    }
-
     incident.severity = json["severity"].toString();
-
-    if (json.contains("policy_name")) {
-        incident.policyName = json["policy_name"].toString();
-    }
-
-    if (json.contains("agent_hostname")) {
-        incident.agentHostname = json["agent_hostname"].toString();
-    }
-
-    incident.matchedContent = json["matched_content"].toString();
     incident.status = json["status"].toString();
+    incident.matchedContent = json["matched_content"].toString();
     incident.createdAt = QDateTime::fromString(json["created_at"].toString(), Qt::ISODate);
 
-    if (!json["resolved_at"].isNull()) {
-        incident.resolvedAt = QDateTime::fromString(json["resolved_at"].toString(), Qt::ISODate);
+    if (json.contains("Event") && json["Event"].isObject()) {
+        QJsonObject eventObj = json["Event"].toObject();
+        incident.fileName = eventObj["file_name"].toString();
+        incident.filePath = eventObj["file_path"].toString();
+
+        if (eventObj.contains("Agent") && eventObj["Agent"].isObject()) {
+            QJsonObject agentObj = eventObj["Agent"].toObject();
+            incident.agentHostname = agentObj["hostname"].toString();
+        }
     }
 
-    incident.resolvedBy = json["resolved_by"].toString();
+    if (json.contains("Policy") && json["Policy"].isObject()) {
+        QJsonObject policyObj = json["Policy"].toObject();
+        incident.policyName = policyObj["name"].toString();
+    }
 
     return incident;
 }

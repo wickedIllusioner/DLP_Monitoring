@@ -8,9 +8,16 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
+#include(FetchContent)
+#FetchContent_Declare(Qlementine
+#        GIT_REPOSITORY "https://github.com/oclero/qlementine.git"
+#)
+#FetchContent_MakeAvailable(Qlementine)
+
 find_package(Qt6 COMPONENTS Core Widgets Network Charts Concurrent REQUIRED)
 
 add_executable(DLP_GUI main.cpp
+        # Основные компоненты
         src/MainWindow.cpp
         src/ApiClient.cpp
         src/DataModels.cpp
@@ -19,6 +26,20 @@ add_executable(DLP_GUI main.cpp
         include/ApiClient.h
         include/DataModels.h
         include/Dialogs.h
+
+        # Виджеты
+        widgets/src/ChartWidget.cpp
+        widgets/include/ChartWidget.h
+        widgets/src/StatisticsTabWidget.cpp
+        widgets/include/StatisticsTabWidget.h
+        widgets/include/StatsData.h
+        widgets/include/PieChartWidget.h
+        widgets/src/PieChartWidget.cpp
+        widgets/include/BarChartWidget.h
+        widgets/src/BarChartWidget.cpp
+        widgets/include/StatsSummaryWidget.h
+        widgets/src/StatsSummaryWidget.cpp
+
 )
 target_link_libraries(DLP_GUI PRIVATE
         Qt6::Core
@@ -26,4 +47,5 @@ target_link_libraries(DLP_GUI PRIVATE
         Qt6::Widgets
         Qt6::Charts
         Qt6::Concurrent
+#        qlementine
 )
