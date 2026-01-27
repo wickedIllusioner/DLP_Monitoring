@@ -28,6 +28,7 @@ signals:
 private slots:
     void onFileCreated(const QString& filePath, qint64 size);
     void onFileModified(const QString& filePath, qint64 size);
+    void onFileDeleted(const QString& filePath);
     void onFileAnalyzed(const QString& filePath, bool hasViolations,
                        const QList<PolicyMatch>& matches, qint64 size);
     void onPoliciesReceived(const QJsonArray& policies);
@@ -40,10 +41,13 @@ private:
     void registerAgent();
     void loadPolicies();
     void sendHeartbeat();
-    void sendEvent(const QString& filePath, const QString& content,
+    void sendEvent(const QString& filePath, const QString& content, const QString& eventType,
                    bool isViolation, const QList<PolicyMatch>& matches);
+    void analyzeAndSendEvent(const QString& filePath, qint64 size, const QString& eventType);
 
     QTimer* m_heartbeatTimer;
+    QHash<QString,QString> m_fileEventTypes;
+    QSet<QString> m_violationFiles;
 
     ConfigManager& m_config;
     NetworkManager m_network;

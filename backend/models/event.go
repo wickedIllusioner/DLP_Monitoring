@@ -15,10 +15,9 @@ type Event struct {
 	ContentSample string    `json:"content_sample" gorm:"type:text"`
 	DetectedAt    time.Time `json:"detected_at" gorm:"default:CURRENT_TIMESTAMP"`
 	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime"`
-	//DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
-
-	Agent    Agent     `gorm:"foreignKey:AgentID;references:ID"`
-	Incident *Incident `gorm:"foreignKey:EventID"`
+	IsViolation   bool      `json:"is_violation" gorm:"default:false"`
+	Agent         Agent     `gorm:"foreignKey:AgentID;references:ID"`
+	Incident      *Incident `gorm:"foreignKey:EventID"`
 }
 
 // EventCreate - запрос создания события

@@ -2,6 +2,7 @@
 #include "../include/Logger.h"
 #include <QTimer>
 #include <QDateTime>
+#include <QDir>
 #include <QJsonDocument>
 
 Agent::Agent(QObject* parent)
@@ -45,6 +46,8 @@ bool Agent::start()
             this, &Agent::onFileCreated);
     connect(&m_monitor, &FileMonitor::fileModified,
             this, &Agent::onFileModified);
+    connect(&m_monitor, &FileMonitor::fileDeleted,
+            this, &Agent::onFileDeleted);
 
     connect(&m_analyzer, &ContentAnalyzer::fileAnalyzed,
             this, &Agent::onFileAnalyzed);
@@ -120,7 +123,7 @@ void Agent::sendHeartbeat()
     m_network.sendHeartbeat(agentId);
 }
 
-void Agent::sendEvent(const QString& filePath, const QString& content,
+void Agent::sendEvent(const QString& filePath, const QString& content, const QString& eventType,
                       bool isViolation, const QList<PolicyMatch>& matches)
 {
     QJsonObject event;
@@ -128,13 +131,27 @@ void Agent::sendEvent(const QString& filePath, const QString& content,
     event["agent_id"] = m_config.agentId();
     event["file_path"] = filePath;
     event["file_name"] = QFileInfo(filePath).fileName();
-    event["event_type"] = "created";
+    event["event_type"] = eventType;
     event["file_size"] = static_cast<qint64>(QFileInfo(filePath).size());
     event["content_sample"] = content.left(1000);
     event["detected_at"] = QDateTime::currentDateTime().toString(Qt::ISODate) + "Z";
     event["is_violation"] = isViolation;
 
-    if (isViolation && !matches.isEmpty()) {
+    if (eventType == "deleted") {
+        event["is_violation"] = m_violationFiles.contains(filePath);
+        if (event["is_violation"].isBool()) {
+            event["violation_type"] = "data_loss";
+            event["severity"] = "high";
+        }
+    } else {
+        event["is_violation"] = isViolation;
+        if (eventType == "modified" && m_violationFiles.contains(filePath)) {
+            event["is_violation"] = true;
+            event["severity"] = "high";
+        }
+    }
+
+    if (event["is_violation"].toBool() && !matches.isEmpty()) {
         QStringList policyNames;
         QStringList severities;
 
@@ -156,19 +173,25 @@ void Agent::sendEvent(const QString& filePath, const QString& content,
 void Agent::onFileCreated(const QString& filePath, qint64 size)
 {
     LOG_INFO(QString("Файл создан: %1 (%2 байт)").arg(filePath).arg(size));
-
-    if (!m_analyzer.analyzeFile(filePath, &m_checker)) {
-        LOG_WARNING(QString("Не удалось проанализировать файл: %1").arg(filePath));
-    }
+    analyzeAndSendEvent(filePath, size, "created");
 }
 
 void Agent::onFileModified(const QString& filePath, qint64 size)
 {
     LOG_INFO(QString("Файл изменен: %1 (%2 байт)").arg(filePath).arg(size));
+    analyzeAndSendEvent(filePath, size, "modified");
+}
 
-    if (!m_analyzer.analyzeFile(filePath, &m_checker)) {
-        LOG_WARNING(QString("Не удалось проанализировать файл: %1").arg(filePath));
-    }
+void Agent::onFileDeleted(const QString& filePath) {
+    LOG_INFO(QString("Файл удален: %1").arg(filePath));
+
+    m_fileEventTypes.remove(filePath);
+
+    QString content = "";
+    bool hadViolation = m_violationFiles.contains(filePath);
+
+    sendEvent(filePath, content, "deleted", hadViolation, QList<PolicyMatch>());
+    m_violationFiles.remove(filePath);
 }
 
 void Agent::onFileAnalyzed(const QString& filePath, bool hasViolations,
@@ -178,10 +201,20 @@ void Agent::onFileAnalyzed(const QString& filePath, bool hasViolations,
 
     if (content.isEmpty()) {
         LOG_WARNING(QString("Не удалось прочитать файл для отправки: %1").arg(filePath));
+        m_fileEventTypes.remove(filePath);
         return;
     }
 
-    sendEvent(filePath, content, hasViolations, matches);
+    QString eventType = m_fileEventTypes.value(filePath, "created");
+
+    if (hasViolations) {
+        m_violationFiles.insert(filePath);
+    } else if (eventType == "modified") {
+        m_violationFiles.remove(filePath);
+    }
+
+    sendEvent(filePath, content, eventType, hasViolations, matches);
+    m_fileEventTypes.remove(filePath);
 }
 
 void Agent::onPoliciesReceived(const QJsonArray& policies)
@@ -213,4 +246,17 @@ void Agent::onNetworkError(const QString& error)
 {
     LOG_ERROR(QString("Ошибка сети: %1").arg(error));
     emit errorOccurred(error);
+}
+
+
+void Agent::analyzeAndSendEvent(const QString &filePath, qint64 size, const QString &eventType) {
+    m_fileEventTypes[filePath] = eventType;
+
+    if (!m_analyzer.analyzeFile(filePath, &m_checker)) {
+        LOG_WARNING(QString("Не удалось проанализировать файл: %1").arg(filePath));
+
+        QString content = m_analyzer.readFileContent(filePath);
+        sendEvent(filePath, content, eventType, false, QList<PolicyMatch>());
+        m_fileEventTypes.remove(filePath);
+    }
 }

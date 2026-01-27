@@ -35,6 +35,7 @@ func (h *Handler) HandleEvent(w http.ResponseWriter, r *http.Request) {
 		FileSize:      req.FileSize,
 		ContentSample: req.ContentSample,
 		DetectedAt:    req.DetectedAt,
+		IsViolation:   req.IsViolation,
 	}
 
 	eventID, err := h.store.SaveEvent(r.Context(), &event)

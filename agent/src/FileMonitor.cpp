@@ -229,7 +229,16 @@ QStringList FileMonitor::getDirectoryFiles(const QString &directory, bool recurs
 
 bool FileMonitor::shouldMonitorFile(const QString &filePath) const {
     QFileInfo info(filePath);
-    if (info.size() > m_maxFileSize || isExcluded(filePath)) {
+    if (info.size() > m_maxFileSize) {
+        return false;
+    }
+
+    QString fileName = info.fileName();
+    if (fileName.contains("Untitled Document", Qt::CaseInsensitive)) {
+        return false;
+    }
+
+    if (isExcluded(filePath)) {
         return false;
     }
 
