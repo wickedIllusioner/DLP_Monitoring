@@ -45,22 +45,14 @@ func main() {
 	defer dbStore.Close()
 	log.Info().Msg("Подключение к PostgreSQL через GORM установлено")
 
-	// Создание обработчиков
 	handler := handlers.NewHandler(*dbStore, logger)
-
-	// Создание роутера
 	router := chi.NewRouter()
 
-	// Базовые middleware от chi
 	router.Use(chimiddleware.RequestID)
 	router.Use(chimiddleware.RealIP)
 	router.Use(chimiddleware.Recoverer)
 	router.Use(chimiddleware.Timeout(cfg.ServerRequestTimeout))
-
-	// CORS middleware
 	router.Use(middleware.CORS())
-
-	// Кастомное логирование запросов
 	router.Use(middleware.RequestLogger(logger))
 
 	// Health check
@@ -117,7 +109,6 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	// Запуск сервера в горутине
 	go func() {
 		log.Info().Int("port", cfg.ServerPort).Msg("Сервер запущен")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -125,7 +116,6 @@ func main() {
 		}
 	}()
 
-	// Ожидание сигнала завершения
 	<-quit
 	log.Info().Msg("Получен сигнал завершения...")
 

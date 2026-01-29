@@ -22,10 +22,14 @@ add_executable(DLP_GUI main.cpp
         src/ApiClient.cpp
         src/DataModels.cpp
         src/Dialogs.cpp
+        src/AgentInfoDialog.cpp
+        src/AgentCreationDialog.cpp
         include/MainWindow.h
         include/ApiClient.h
         include/DataModels.h
         include/Dialogs.h
+        include/AgentCreationDialog.h
+        include/AgentInfoDialog.h
 
         # Виджеты
         widgets/src/ChartWidget.cpp
@@ -39,7 +43,6 @@ add_executable(DLP_GUI main.cpp
         widgets/src/BarChartWidget.cpp
         widgets/include/StatsSummaryWidget.h
         widgets/src/StatsSummaryWidget.cpp
-
 )
 target_link_libraries(DLP_GUI PRIVATE
         Qt6::Core

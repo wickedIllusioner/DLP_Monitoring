@@ -54,7 +54,7 @@ func (s *GormStore) GetAgentByUUID(ctx context.Context, agentUUID string) (*mode
 func (s *GormStore) UpdateAgentHeartbeat(ctx context.Context, agentUUID string) error {
 	result := s.db.WithContext(ctx).
 		Model(&models.Agent{}).
-		Where("agent_id = ?", agentUUID).
+		Where("agent_uuid = ?", agentUUID).
 		Updates(map[string]interface{}{
 			"last_seen":  time.Now(),
 			"updated_at": time.Now(),

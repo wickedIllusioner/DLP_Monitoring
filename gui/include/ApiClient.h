@@ -17,6 +17,7 @@ public:
     // Базовые методы
     void setBaseUrl(const QString &url);
     void setApiKey(const QString &apiKey);
+    QString getBaseUrl() { return m_baseUrl; }
 
     // Методы для политик
     void fetchPolicies();
@@ -35,7 +36,7 @@ public:
     void fetchStatistics();
 
     // Периодическое обновление
-    void startAutoRefresh(int intervalMs = 30000);  // 30 секунд по умолчанию
+    void startAutoRefresh(int intervalMs = 30000);
     void stopAutoRefresh();
 
 signals:

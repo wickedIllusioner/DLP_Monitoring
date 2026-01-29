@@ -37,13 +37,17 @@ private slots:
     void onNetworkError(const QString& error);
 
 private:
-    // Вспомогательные методы
     void registerAgent();
     void loadPolicies();
     void sendHeartbeat();
     void sendEvent(const QString& filePath, const QString& content, const QString& eventType,
                    bool isViolation, const QList<PolicyMatch>& matches);
     void analyzeAndSendEvent(const QString& filePath, qint64 size, const QString& eventType);
+
+    // !!!
+    void analyzeExistingFiles(const QStringList& dirs);
+    QStringList getFilesRecursive(const QDir& dir);
+    bool shouldMonitorFile(const QString& filePath) const;
 
     QTimer* m_heartbeatTimer;
     QHash<QString,QString> m_fileEventTypes;
@@ -55,6 +59,8 @@ private:
     PolicyChecker m_checker;
     ContentAnalyzer m_analyzer;
     EventQueue m_eventQueue;
+
+    QString m_serverAgentId;
 
     bool m_running;
 };

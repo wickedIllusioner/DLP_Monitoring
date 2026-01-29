@@ -10,6 +10,7 @@
 #include <QStatusBar>
 #include <QTimer>
 #include <QDateEdit>
+#include <QProcess>
 #include <QSortFilterProxyModel>
 #include <QStandardItemModel>
 #include "ApiClient.h"
@@ -29,6 +30,9 @@ private slots:
     void onDeletePolicy();
     void onRefreshData();
     void onChangeIncidentStatus();
+    void onAddAgent();
+    void onAgentDoubleClicked(const QModelIndex& index);
+    void onDeleteAgent(int agentId);
 
     // Слоты ответов API
     void onPoliciesFetched(const QJsonArray &policies);
@@ -49,7 +53,6 @@ private slots:
 private:
     void setupUI();
     void setupConnections();
-    void setupMenuBar();
     void setupToolBar();
     void setupTabs();
     void setupStatusBar();
@@ -76,6 +79,7 @@ private:
     QPushButton *m_btnDeletePolicy;
     QPushButton *m_btnRefresh;
     QPushButton *m_btnChangeStatus;
+    QPushButton *m_btnAddAgent;
 
     // Фильтры
     QComboBox *m_severityFilter;
@@ -94,6 +98,8 @@ private:
     QList<Incident> m_incidents;
     QList<Event> m_events;
     QList<Agent> m_agents;
+    QHash<QString, QProcess*> m_runningAgents;
+    QHash<QString, QStringList> m_agentDirectories;
 
     // Модели данных
     QStandardItemModel *m_incidentsModel;
@@ -105,6 +111,10 @@ private:
     QTimer *m_autoRefreshTimer;
 
     QSortFilterProxyModel* m_incidentsProxyModel;
+
+    // bool isAgentProcessRunning(const QString& agentName);
+    // void saveRunningAgentsToSettings();
+    // void loadRunningAgentsFromSettings();
 };
 
 #endif //MAINWINDOW_H

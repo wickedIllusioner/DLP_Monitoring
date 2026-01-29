@@ -47,6 +47,7 @@ struct Incident {
 struct Event {
     int id;
     QString agentId;
+    QString agentName;
     QString filePath;
     QString fileName;
     QString eventType;

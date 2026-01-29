@@ -14,30 +14,26 @@ public:
     explicit NetworkManager(QObject* parent = nullptr);
     ~NetworkManager();
 
-    // Основные методы
     void registerAgent(const QString& agentId, const QString& hostname,
                        const QString& ipAddr = "", const QString& osInfo = "");
     void sendHeartbeat(const QString& agentId);
     void sendEvent(const QJsonObject& event);
     void getPoliciesForAgent();
+    QNetworkAccessManager* getManager() const { return m_manager; }
 
-    // Геттеры и сеттеры
     QString serverUrl() const { return m_serverUrl; }
     void setServerUrl(const QString& url);
     void setTimeout(int msec);
 
 signals:
-    // Сигналы успешных операций
     void agentRegistered(const QJsonObject& resp);
     void heartbeatSent(bool success);
     void eventSent(const QJsonObject& resp);
     void policiesReceived(const QJsonArray& policies);
-
-    // Сигналы ошибок
     void errorOccurred(const QString& error);
 
 private slots:
-        void onReplyFinished(QNetworkReply* reply);
+    void onReplyFinished(QNetworkReply* reply);
 
 private:
     QNetworkRequest createRequest(const QString& endpoint) const;

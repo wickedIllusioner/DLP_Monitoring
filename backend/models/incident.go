@@ -15,7 +15,6 @@ type Incident struct {
 	CreatedAt      time.Time  `json:"created_at" gorm:"autoCreateTime"`
 	ResolvedAt     *time.Time `json:"resolved_at,omitempty" db:"resolved_at"`
 	ResolvedBy     *string    `json:"resolved_by,omitempty" gorm:"size:100"`
-	//DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
 
 	Event  *Event  `gorm:"foreignKey:EventID;references:ID"`
 	Policy *Policy `gorm:"foreignKey:PolicyID"`

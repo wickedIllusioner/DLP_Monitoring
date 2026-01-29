@@ -11,10 +11,10 @@ type Store interface {
 	CreateAgent(ctx context.Context, agent *models.Agent) (int64, error)
 	GetAgents(ctx context.Context) ([]models.Agent, error)
 	GetAgent(ctx context.Context, id int64) (*models.Agent, error)
-	GetAgentByUUID(ctx context.Context, agentID string) (*models.Agent, error)
+	GetAgentByID(ctx context.Context, agentID string) (*models.Agent, error)
 	UpdateAgentHeartbeat(ctx context.Context, agentID string) error
 	DeleteAgent(ctx context.Context, id int64) error
-	DeleteAgentByUUID(ctx context.Context, agentID string) error
+	DeleteAgentByID(ctx context.Context, agentID string) error
 
 	// Политики
 	GetPolicies(ctx context.Context) ([]models.Policy, error)

@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS events (
     event_type VARCHAR(50) NOT NULL,
     file_size BIGINT,
     content_sample TEXT,
+    is_violation BOOLEAN NOT NULL DEFAULT false,
     detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -9,8 +9,7 @@
 NetworkManager::NetworkManager(QObject *parent)
     : QObject(parent)
     , m_manager(new QNetworkAccessManager(this))
-    , m_timeout(10000)
-{
+    , m_timeout(10000) {
     // Получение настроек из конфига
     m_serverUrl = ConfigManager::instance().get("server/url", "http://127.0.0.1:8080").toString();
     m_timeout = ConfigManager::instance().get("server/timeout", 10000).toInt();
@@ -41,8 +40,7 @@ NetworkManager::NetworkManager(QObject *parent)
             this, &NetworkManager::onReplyFinished);
 }
 
-NetworkManager::~NetworkManager()
-{
+NetworkManager::~NetworkManager() {
     LOG_DEBUG("Очистка NetworkManager");
     for (QNetworkReply* reply : m_activeReplies) {
         if (reply && reply->isRunning()) {
@@ -53,8 +51,7 @@ NetworkManager::~NetworkManager()
     m_activeReplies.clear();
 }
 
-void NetworkManager::setServerUrl(const QString &url)
-{
+void NetworkManager::setServerUrl(const QString &url) {
     QString newUrl = url;
     if (newUrl.endsWith('/')) {
         newUrl.chop(1);
@@ -66,22 +63,19 @@ void NetworkManager::setServerUrl(const QString &url)
     }
 }
 
-void NetworkManager::setTimeout(int msec)
-{
+void NetworkManager::setTimeout(int msec) {
     if (m_timeout != msec) {
         m_timeout = msec;
         LOG_DEBUG(QString("Таймаут изменен: %1 мс").arg(m_timeout));
     }
 }
 
-QByteArray NetworkManager::prepareJson(const QJsonObject& data) const
-{
+QByteArray NetworkManager::prepareJson(const QJsonObject& data) const {
     QJsonDocument doc(data);
     return doc.toJson(QJsonDocument::Compact);
 }
 
-QNetworkRequest NetworkManager::createRequest(const QString& endpoint) const
-{
+QNetworkRequest NetworkManager::createRequest(const QString& endpoint) const {
     QString fullUrl = m_serverUrl + endpoint;
     QUrl url(fullUrl);
 
@@ -95,15 +89,13 @@ QNetworkRequest NetworkManager::createRequest(const QString& endpoint) const
     request.setHeader(QNetworkRequest::UserAgentHeader, "DLP-Agent/1.0");
     request.setTransferTimeout(m_timeout);
 
-    // Для отладки
     LOG_DEBUG(QString("Создан запрос: %1").arg(fullUrl));
 
     return request;
 }
 
 void NetworkManager::registerAgent(const QString &agentId, const QString &hostname,
-                                   const QString &ipAddr, const QString &osInfo)
-{
+                                   const QString &ipAddr, const QString &osInfo) {
     QJsonObject data;
     data["agent_id"] = agentId;
     data["hostname"] = hostname;
@@ -133,30 +125,23 @@ void NetworkManager::registerAgent(const QString &agentId, const QString &hostna
     LOG_DEBUG(QString("Данные: %1").arg(QString(prepareJson(data))));
 }
 
-void NetworkManager::sendHeartbeat(const QString &agentId)
-{
-    QJsonObject data;
-    data["agent_id"] = agentId;
-
+void NetworkManager::sendHeartbeat(const QString &agentId) {
     QNetworkRequest request = createRequest(QString("/api/v1/agents/%1/heartbeat").arg(agentId));
     if (request.url().isEmpty()) {
         emit errorOccurred("Неверный URL сервера");
         return;
     }
 
-    QNetworkReply* reply = m_manager->put(request, prepareJson(data));
-
+    QNetworkReply* reply = m_manager->put(request, QByteArray());
     reply->setProperty("request_type", "heartbeat");
     reply->setProperty("agent_id", agentId);
     reply->setProperty("endpoint", QString("/api/v1/agents/%1/heartbeat").arg(agentId));
-
     m_activeReplies.append(reply);
 
     LOG_DEBUG(QString("Отправка heartbeat: %1").arg(agentId));
 }
 
-void NetworkManager::sendEvent(const QJsonObject& event)
-{
+void NetworkManager::sendEvent(const QJsonObject& event) {
     QJsonObject validatedEvent = event;
 
     if (!validatedEvent.contains("agent_id")) {
@@ -204,8 +189,7 @@ void NetworkManager::sendEvent(const QJsonObject& event)
     LOG_DEBUG(QString("Данные события: %1").arg(QString(prepareJson(validatedEvent))));
 }
 
-void NetworkManager::getPoliciesForAgent()
-{
+void NetworkManager::getPoliciesForAgent() {
     QNetworkRequest request = createRequest("/api/v1/policies/agent");
     if (request.url().isEmpty()) {
         emit errorOccurred("Неверный URL сервера");
@@ -222,15 +206,13 @@ void NetworkManager::getPoliciesForAgent()
     LOG_DEBUG("Запрос политик для агента");
 }
 
-void NetworkManager::handleError(const QString& context, const QString& error)
-{
+void NetworkManager::handleError(const QString& context, const QString& error) {
     QString errorMsg = QString("%1: %2").arg(context).arg(error);
     LOG_ERROR(errorMsg);
     emit errorOccurred(errorMsg);
 }
 
-void NetworkManager::onReplyFinished(QNetworkReply* reply)
-{
+void NetworkManager::onReplyFinished(QNetworkReply* reply) {
     m_activeReplies.removeAll(reply);
 
     QString requestType = reply->property("request_type").toString();

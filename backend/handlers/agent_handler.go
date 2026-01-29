@@ -59,18 +59,14 @@ func (h *Handler) GetAgents(w http.ResponseWriter, r *http.Request) {
 
 // UpdateAgentHeartbeat - обновление heartbeat агента
 func (h *Handler) UpdateAgentHeartbeat(w http.ResponseWriter, r *http.Request) {
-	var req models.AgentHeartbeat
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Неверный формат JSON", http.StatusBadRequest)
+	agentUUID := chi.URLParam(r, "id")
+
+	if agentUUID == "" {
+		http.Error(w, "UUID агента обязателен", http.StatusBadRequest)
 		return
 	}
 
-	if req.AgentID == "" {
-		http.Error(w, "Обязательное поле: agent_id", http.StatusBadRequest)
-		return
-	}
-
-	err := h.store.UpdateAgentHeartbeat(r.Context(), req.AgentID)
+	err := h.store.UpdateAgentHeartbeat(r.Context(), agentUUID)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Ошибка обновления heartbeat")
 		http.Error(w, "Агент не найден", http.StatusNotFound)

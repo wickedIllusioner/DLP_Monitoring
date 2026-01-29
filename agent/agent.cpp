@@ -1,4 +1,3 @@
-// main.cpp
 #include "include/Agent.h"
 #include "include/Logger.h"
 #include "include/ConfigManager.h"

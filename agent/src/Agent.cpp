@@ -10,47 +10,34 @@ Agent::Agent(QObject* parent)
     , m_heartbeatTimer(new QTimer(this))
     , m_config(ConfigManager::instance())
     , m_running(false)
-{
-    LOG_DEBUG("Агент инициализирован");
-}
+{ LOG_DEBUG("Агент инициализирован"); }
 
-Agent::~Agent()
-{
+Agent::~Agent() {
     stop();
     LOG_DEBUG("Агент уничтожен");
 }
 
-bool Agent::start()
-{
+bool Agent::start() {
     if (m_running) {
         LOG_WARNING("Агент уже запущен");
         return false;
     }
-
     LOG_INFO("Запуск DLP агента...");
 
     if (!m_config.isLoaded()) {
         m_config.loadConfig();
     }
 
-    connect(&m_network, &NetworkManager::policiesReceived,
-            this, &Agent::onPoliciesReceived);
-    connect(&m_network, &NetworkManager::heartbeatSent,
-            this, &Agent::onHeartbeatSent);
-    connect(&m_network, &NetworkManager::eventSent,
-            this, &Agent::onEventSent);
-    connect(&m_network, &NetworkManager::errorOccurred,
-            this, &Agent::onNetworkError);
+    connect(&m_network, &NetworkManager::policiesReceived, this, &Agent::onPoliciesReceived);
+    connect(&m_network, &NetworkManager::heartbeatSent, this, &Agent::onHeartbeatSent);
+    connect(&m_network, &NetworkManager::eventSent, this, &Agent::onEventSent);
+    connect(&m_network, &NetworkManager::errorOccurred, this, &Agent::onNetworkError);
 
-    connect(&m_monitor, &FileMonitor::fileCreated,
-            this, &Agent::onFileCreated);
-    connect(&m_monitor, &FileMonitor::fileModified,
-            this, &Agent::onFileModified);
-    connect(&m_monitor, &FileMonitor::fileDeleted,
-            this, &Agent::onFileDeleted);
+    connect(&m_monitor, &FileMonitor::fileCreated, this, &Agent::onFileCreated);
+    connect(&m_monitor, &FileMonitor::fileModified, this, &Agent::onFileModified);
+    connect(&m_monitor, &FileMonitor::fileDeleted, this, &Agent::onFileDeleted);
+    connect(&m_analyzer, &ContentAnalyzer::fileAnalyzed, this, &Agent::onFileAnalyzed);
 
-    connect(&m_analyzer, &ContentAnalyzer::fileAnalyzed,
-            this, &Agent::onFileAnalyzed);
 
     m_monitor.setExcludePatterns(m_config.get("monitoring/exclude_patterns").toStringList());
     m_monitor.setMaxFileSize(m_config.get("agent/max_file_size").toLongLong());
@@ -72,7 +59,7 @@ bool Agent::start()
         return false;
     }
 
-    int heartbeatInterval = m_config.get("server/heartbeat_interval", 300).toInt() * 1000;
+    int heartbeatInterval = m_config.get("server/heartbeat_interval", 60).toInt() * 1000;
     m_heartbeatTimer->setInterval(heartbeatInterval);
     connect(m_heartbeatTimer, &QTimer::timeout, this, &Agent::sendHeartbeat);
     m_heartbeatTimer->start();
@@ -85,8 +72,7 @@ bool Agent::start()
     return true;
 }
 
-void Agent::stop()
-{
+void Agent::stop() {
     if (!m_running) {
         return;
     }
@@ -97,12 +83,29 @@ void Agent::stop()
     m_monitor.stopMonitoring();
     m_running = false;
 
+    QString agentId = m_config.agentId();
+    if (!agentId.isEmpty()) {
+        QUrl url(m_config.get("server/url").toString() +
+                QString("/api/v1/agents/%1").arg(agentId));
+        QNetworkRequest request(url);
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+        QNetworkReply* reply = m_network.getManager()->deleteResource(request);
+        connect(reply, &QNetworkReply::finished, [reply, agentId]() {
+            if (reply->error() == QNetworkReply::NoError) {
+                LOG_INFO(QString("Агент %1 удален с сервера").arg(agentId));
+            } else {
+                LOG_DEBUG(QString("Не удалось удалить агента: %1").arg(reply->errorString()));
+            }
+            reply->deleteLater();
+        });
+    }
+
     LOG_INFO("DLP агент остановлен");
     emit stopped();
 }
 
-void Agent::registerAgent()
-{
+void Agent::registerAgent() {
     QString agentId = m_config.agentId();
     QString hostname = m_config.get("agent/hostname").toString();
 
@@ -110,22 +113,19 @@ void Agent::registerAgent()
     m_network.registerAgent(agentId, hostname);
 }
 
-void Agent::loadPolicies()
-{
+void Agent::loadPolicies() {
     LOG_INFO("Загрузка политик DLP...");
     m_network.getPoliciesForAgent();
 }
 
-void Agent::sendHeartbeat()
-{
+void Agent::sendHeartbeat() {
     QString agentId = m_config.agentId();
     LOG_DEBUG(QString("Отправка heartbeat: %1").arg(agentId));
     m_network.sendHeartbeat(agentId);
 }
 
 void Agent::sendEvent(const QString& filePath, const QString& content, const QString& eventType,
-                      bool isViolation, const QList<PolicyMatch>& matches)
-{
+                      bool isViolation, const QList<PolicyMatch>& matches) {
     QJsonObject event;
 
     event["agent_id"] = m_config.agentId();
@@ -170,14 +170,12 @@ void Agent::sendEvent(const QString& filePath, const QString& content, const QSt
     m_network.sendEvent(event);
 }
 
-void Agent::onFileCreated(const QString& filePath, qint64 size)
-{
+void Agent::onFileCreated(const QString& filePath, qint64 size) {
     LOG_INFO(QString("Файл создан: %1 (%2 байт)").arg(filePath).arg(size));
     analyzeAndSendEvent(filePath, size, "created");
 }
 
-void Agent::onFileModified(const QString& filePath, qint64 size)
-{
+void Agent::onFileModified(const QString& filePath, qint64 size) {
     LOG_INFO(QString("Файл изменен: %1 (%2 байт)").arg(filePath).arg(size));
     analyzeAndSendEvent(filePath, size, "modified");
 }
@@ -195,8 +193,7 @@ void Agent::onFileDeleted(const QString& filePath) {
 }
 
 void Agent::onFileAnalyzed(const QString& filePath, bool hasViolations,
-                          const QList<PolicyMatch>& matches, qint64 size)
-{
+                          const QList<PolicyMatch>& matches, qint64 size) {
     QString content = m_analyzer.readFileContent(filePath);
 
     if (content.isEmpty()) {
@@ -217,17 +214,22 @@ void Agent::onFileAnalyzed(const QString& filePath, bool hasViolations,
     m_fileEventTypes.remove(filePath);
 }
 
-void Agent::onPoliciesReceived(const QJsonArray& policies)
-{
+void Agent::onPoliciesReceived(const QJsonArray& policies) {
     if (m_checker.loadPolicies(policies)) {
         LOG_INFO(QString("Политики DLP загружены: %1 шт").arg(policies.size()));
+
+        // !!!
+        QStringList dirs = m_config.get("monitoring/directories").toStringList();
+        if (!dirs.isEmpty()) {
+            analyzeExistingFiles(dirs);
+        }
+
     } else {
         LOG_ERROR("Не удалось загрузить политики DLP");
     }
 }
 
-void Agent::onHeartbeatSent(bool success)
-{
+void Agent::onHeartbeatSent(bool success) {
     if (success) {
         LOG_DEBUG("Heartbeat подтвержден сервером");
     } else {
@@ -235,15 +237,13 @@ void Agent::onHeartbeatSent(bool success)
     }
 }
 
-void Agent::onEventSent(const QJsonObject& resp)
-{
+void Agent::onEventSent(const QJsonObject& resp) {
     LOG_INFO("Событие успешно отправлено на сервер");
     QByteArray jsonData = QJsonDocument(resp).toJson();
     LOG_DEBUG(QString("Ответ сервера: %1").arg(QString::fromUtf8(jsonData)));
 }
 
-void Agent::onNetworkError(const QString& error)
-{
+void Agent::onNetworkError(const QString& error) {
     LOG_ERROR(QString("Ошибка сети: %1").arg(error));
     emit errorOccurred(error);
 }
@@ -259,4 +259,76 @@ void Agent::analyzeAndSendEvent(const QString &filePath, qint64 size, const QStr
         sendEvent(filePath, content, eventType, false, QList<PolicyMatch>());
         m_fileEventTypes.remove(filePath);
     }
+}
+
+
+// !!!
+void Agent::analyzeExistingFiles(const QStringList& dirs) {
+    for (const QString& dir : dirs) {
+        QDir directory(dir);
+        if (!directory.exists()) {
+            continue;
+        }
+
+        // Рекурсивный поиск файлов
+        QStringList files = getFilesRecursive(directory);
+
+        for (const QString& filePath : files) {
+            if (!shouldMonitorFile(filePath)) {
+                continue;
+            }
+            LOG_DEBUG(QString("Анализ существующего файла: %1").arg(filePath));
+
+            QString content = m_analyzer.readFileContent(filePath);
+            if (!content.isEmpty()) {
+                QList<PolicyMatch> matches = m_checker.checkContent(content, filePath);
+                bool hasViolations = !matches.isEmpty();
+
+                if (hasViolations) {
+                    LOG_INFO(QString("Файл содержит чувствительную информацию: %1").arg(filePath));
+                    m_violationFiles.insert(filePath);
+                }
+            }
+        }
+    }
+    LOG_INFO(QString("Начальный анализ завершен. Файлов с нарушениями: %1")
+             .arg(m_violationFiles.size()));
+}
+
+
+QStringList Agent::getFilesRecursive(const QDir& dir) {
+    QStringList files;
+
+    QStringList entries = dir.entryList(QDir::Files | QDir::NoDotAndDotDot);
+    for (const QString& entry : entries) {
+        files.append(dir.absoluteFilePath(entry));
+    }
+
+    QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QString& subdir : subdirs) {
+        QDir subdirectory(dir.absoluteFilePath(subdir));
+        files.append(getFilesRecursive(subdirectory));
+    }
+    return files;
+}
+
+
+bool Agent::shouldMonitorFile(const QString& filePath) const {
+    QFileInfo info(filePath);
+
+    if (info.size() > m_config.get("agent/max_file_size").toLongLong()) {
+        return false;
+    }
+
+    QString fileName = info.fileName();
+    QStringList excludePatterns = m_config.get("monitoring/exclude_patterns").toStringList();
+
+    for (const QString& pattern : excludePatterns) {
+        QRegularExpression regex(QRegularExpression::wildcardToRegularExpression(pattern),
+                                QRegularExpression::CaseInsensitiveOption);
+        if (regex.match(fileName).hasMatch()) {
+            return false;
+        }
+    }
+    return true;
 }

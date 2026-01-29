@@ -1,6 +1,9 @@
 #include "../include/MainWindow.h"
 #include "../include/Dialogs.h"
+#include "../include/AgentCreationDialog.h"
+#include "../include/AgentInfoDialog.h"
 #include "../widgets/include/StatisticsTabWidget.h"
+
 #include <QApplication>
 #include <QSortFilterProxyModel>
 #include <QToolBar>
@@ -9,6 +12,8 @@
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QProcess>
+#include <QSettings>
 #include <algorithm>
 
 using namespace std;
@@ -216,6 +221,13 @@ void MainWindow::setupTabs() {
     m_agentsTab = new QWidget();
     QVBoxLayout *agentsLayout = new QVBoxLayout(m_agentsTab);
 
+    // Панель кнопок для агентов
+    QHBoxLayout *agentButtonsLayout = new QHBoxLayout();
+    m_btnAddAgent = new QPushButton("Создание нового агента", m_agentsTab);
+    agentButtonsLayout->addWidget(m_btnAddAgent);
+    agentButtonsLayout->addStretch();
+    agentsLayout->addLayout(agentButtonsLayout);
+
     m_agentsTable = new QTableView(m_agentsTab);
     m_agentsModel = new QStandardItemModel(0, 5, this);
     m_agentsModel->setHorizontalHeaderLabels(
@@ -229,6 +241,8 @@ void MainWindow::setupTabs() {
 
     agentsLayout->addWidget(m_agentsTable);
     m_tabWidget->addTab(m_agentsTab, "Агенты");
+    connect(m_btnAddAgent, &QPushButton::clicked, this, &MainWindow::onAddAgent);
+    connect(m_agentsTable, &QTableView::doubleClicked, this, &MainWindow::onAgentDoubleClicked);
 
 
     // ============ Вкладка статистики ============
@@ -356,6 +370,93 @@ void MainWindow::onChangeIncidentStatus() {
     }
 }
 
+void MainWindow::onAddAgent() {
+    AgentCreationDialog dialog(this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        QString agentName = dialog.getAgentName();
+        QStringList directories = dialog.getDirectories();
+        QString configPath = dialog.getConfigPath();
+
+        if (m_runningAgents.contains(agentName)) {
+            QMessageBox::warning(this, "Ошибка",
+                QString("Агент с именем '%1' уже запущен").arg(agentName));
+            return;
+        }
+
+        QStringList args;
+        if (!configPath.isEmpty()) {
+            args << "-c" << configPath;
+        }
+        args << "-n" << agentName;
+        args << directories;
+
+        QProcess *agentProcess = new QProcess(this);
+        QString programPath = QCoreApplication::applicationDirPath() + "/dlp-agent";
+        agentProcess->setProgram("./dlp-agent");
+        agentProcess->setArguments(args);
+
+        m_runningAgents[agentName] = agentProcess;
+        m_agentDirectories[agentName] = directories;
+        // saveRunningAgentsToSettings();
+
+        // Подключение сигналов процесса
+        connect(agentProcess, &QProcess::started, [this, agentName, directories]() {
+            m_statusLabel->setText(QString("Агент '%1' запущен").arg(agentName));
+            QMessageBox::information(this, "Успех",
+                QString("Агент '%1' успешно запущен.\nМониторинг директорий: %2")
+                .arg(agentName)
+                .arg(directories.join(", ")));
+        });
+
+        connect(agentProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            [this, agentName](int exitCode, QProcess::ExitStatus exitStatus) {
+                if (exitStatus == QProcess::CrashExit || exitCode != 0) {
+                    m_statusLabel->setText(QString("Агент '%1' завершился с ошибкой").arg(agentName));
+                }
+                // Очищаем ресурсы
+                if (m_runningAgents.contains(agentName)) {
+                    delete m_runningAgents[agentName];
+                    m_runningAgents.remove(agentName);
+                    m_agentDirectories.remove(agentName);
+                }
+            });
+
+        agentProcess->start();
+    }
+}
+
+void MainWindow::onAgentDoubleClicked(const QModelIndex &index) {
+    if (!index.isValid()) return;
+    int row = index.row();
+    QString agentName = m_agentsModel->item(row, 1)->text();
+
+    if (m_runningAgents.contains(agentName)) {
+        QProcess* agentProcess = m_runningAgents[agentName];
+
+        int serverAgentId = 0;
+        for (const Agent& agent : m_agents) {
+            if (agent.hostname == agentName) {
+                serverAgentId = agent.id;
+                break;
+            }
+        }
+
+        QStringList dirs = m_agentDirectories.value(agentName);
+        AgentInfoDialog dialog(agentName, dirs,
+                              agentProcess, serverAgentId, this);
+
+        connect(&dialog, &AgentInfoDialog::deleteAgentRequested,
+                this, &MainWindow::onDeleteAgent);
+
+        dialog.exec();
+
+        } else {
+            QMessageBox::information(this, "Информация",
+                QString("Агент '%1' не запущен локально. Управление возможно только через сервер.").arg(agentName));
+    }
+}
+
 // ==================== Слоты ответов API ====================
 
 void MainWindow::onPoliciesFetched(const QJsonArray &policies) {
@@ -451,7 +552,7 @@ void MainWindow::onEventsFetched(const QJsonArray &events) {
 
         QList<QStandardItem*> items;
         items.append(new QStandardItem(QString::number(event.id)));
-        items.append(new QStandardItem(event.agentId));
+        items.append(new QStandardItem(event.agentName.isEmpty() ? event.agentId : event.agentName));
         items.append(new QStandardItem(event.fileName));
         items.append(new QStandardItem(event.eventType));
         items.append(new QStandardItem(event.isViolation ? "Да" : "Нет"));
@@ -482,7 +583,6 @@ void MainWindow::onAgentsFetched(const QJsonArray &agents) {
         QStandardItem *lastSeenItem = new QStandardItem(
             agent.lastSeen.toString("dd.MM.yyyy HH:mm:ss"));
 
-        // Цвет для онлайн статуса
         if (agent.isOnline) {
             lastSeenItem->setForeground(Qt::darkGreen);
         } else {
@@ -507,7 +607,6 @@ void MainWindow::onStatisticsFetched(const QJsonObject &stats) {
     data.resolved = stats["resolved"].toInt();
     data.falsePositive = stats["false_positive"].toInt();
 
-    // Серьезность
     QJsonArray severityStats = stats["severity_stats"].toArray();
     for (const QJsonValue &severity : severityStats) {
         QJsonObject sevObj = severity.toObject();
@@ -521,7 +620,6 @@ void MainWindow::onStatisticsFetched(const QJsonObject &stats) {
         else if (sev == "info") data.severity.info = count;
     }
 
-    // Политики из policy_stats
     QJsonArray policyStats = stats["policy_stats"].toArray();
     for (const QJsonValue &policy : policyStats) {
         QJsonObject policyObj = policy.toObject();
@@ -530,7 +628,6 @@ void MainWindow::onStatisticsFetched(const QJsonObject &stats) {
         data.incidentsByPolicy[policyName] = count;
     }
 
-    // Агенты из agent_stats
     QJsonArray agentStats = stats["agent_stats"].toArray();
     for (const QJsonValue &agent : agentStats) {
         QJsonObject agentObj = agent.toObject();
@@ -617,4 +714,41 @@ void MainWindow::onFilterChanged() {
     else {
         m_incidentsProxyModel->setFilterFixedString("");
     }
+}
+
+void MainWindow::onDeleteAgent(int agentId) {
+    if (agentId <= 0) {
+        m_statusLabel->setText("ID агента не найден");
+        return;
+    }
+
+    QNetworkAccessManager* manager = new QNetworkAccessManager(this);
+    QUrl url(m_apiClient->getBaseUrl() + QString("/api/v1/agents/%1").arg(agentId));
+    QNetworkRequest request(url);
+
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    QNetworkReply* reply = manager->deleteResource(request);
+
+    connect(reply, &QNetworkReply::finished, [this, reply, agentId, manager]() {
+        reply->deleteLater();
+        manager->deleteLater();
+
+        if (reply->error() == QNetworkReply::NoError) {
+            m_statusLabel->setText(QString("Агент #%1 удален").arg(agentId));
+            m_apiClient->fetchAgents();
+
+            QString agentNameToRemove;
+            for (auto it = m_runningAgents.begin(); it != m_runningAgents.end(); ++it) {}
+
+            if (!agentNameToRemove.isEmpty()) {
+                m_runningAgents.remove(agentNameToRemove);
+            }
+        } else {
+            QString error = QString("Ошибка удаления агента #%1: %2")
+                              .arg(agentId)
+                              .arg(reply->errorString());
+            m_statusLabel->setText(error);
+            QMessageBox::warning(this, "Ошибка", error);
+        }
+    });
 }

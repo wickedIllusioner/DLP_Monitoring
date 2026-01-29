@@ -14,7 +14,6 @@ type Policy struct {
 	IsActive    bool      `json:"is_active" gorm:"default:true"`
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
-	//DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 
 	Incidents []Incident `gorm:"foreignKey:PolicyID"`
 }

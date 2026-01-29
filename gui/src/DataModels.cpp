@@ -3,8 +3,7 @@
 #include <QJsonDocument>
 
 
-DlpPolicy DlpPolicy::fromJson(const QJsonObject &json)
-{
+DlpPolicy DlpPolicy::fromJson(const QJsonObject &json) {
     DlpPolicy policy;
 
     policy.id = json["id"].toInt();
@@ -20,8 +19,7 @@ DlpPolicy DlpPolicy::fromJson(const QJsonObject &json)
     return policy;
 }
 
-QJsonObject DlpPolicy::toJson() const
-{
+QJsonObject DlpPolicy::toJson() const {
     QJsonObject json;
 
     json["id"] = id;
@@ -37,8 +35,7 @@ QJsonObject DlpPolicy::toJson() const
 }
 
 
-Incident Incident::fromJson(const QJsonObject &json)
-{
+Incident Incident::fromJson(const QJsonObject &json) {
     Incident incident;
 
     incident.id = json["id"].toInt();
@@ -67,8 +64,7 @@ Incident Incident::fromJson(const QJsonObject &json)
 }
 
 
-Event Event::fromJson(const QJsonObject &json)
-{
+Event Event::fromJson(const QJsonObject &json) {
     Event event;
 
     event.id = json["id"].toInt();
@@ -76,6 +72,13 @@ Event Event::fromJson(const QJsonObject &json)
     event.filePath = json["file_path"].toString();
     event.fileName = json["file_name"].toString();
     event.eventType = json["event_type"].toString();
+
+    if (json.contains("Agent") && json["Agent"].isObject()) {
+        QJsonObject agentObj = json["Agent"].toObject();
+        if (agentObj.contains("hostname")) {
+            event.agentName = agentObj["hostname"].toString();
+        }
+    }
 
     if (json.contains("file_size")) {
         event.fileSize = json["file_size"].toVariant().toLongLong();
@@ -99,8 +102,7 @@ Event Event::fromJson(const QJsonObject &json)
 }
 
 
-Agent Agent::fromJson(const QJsonObject &json)
-{
+Agent Agent::fromJson(const QJsonObject &json) {
     Agent agent;
 
     agent.id = json["id"].toInt();
@@ -114,7 +116,7 @@ Agent Agent::fromJson(const QJsonObject &json)
 
     QDateTime now = QDateTime::currentDateTime();
     agent.isOnline = agent.lastSeen.isValid() &&
-                    agent.lastSeen.secsTo(now) < 600; // 10 минут
+                    agent.lastSeen.secsTo(now) < 600;
 
     return agent;
 }
