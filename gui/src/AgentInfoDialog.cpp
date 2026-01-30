@@ -18,16 +18,14 @@ AgentInfoDialog::AgentInfoDialog(const QString &agentName,
     , m_serverAgentId(serverAgentId) {
 
     setWindowTitle("Информация об агенте");
-    setMinimumSize(500, 300);
+    setMinimumSize(500, 200);
 
     QVBoxLayout* layout = new QVBoxLayout(this);
 
     QLabel* infoLabel = new QLabel(
         QString("<b>Агент:</b> %1<br>"
-                "<b>ID на сервере:</b> %2<br>"
-                "<b>Статус:</b> %3")
+                "<b>Статус:</b> %2")
         .arg(agentName)
-        .arg(serverAgentId > 0 ? QString::number(serverAgentId) : "Неизвестен")
         .arg(agentProcess->state() == QProcess::Running ? "Запущен" : "Остановлен")
     );
     layout->addWidget(infoLabel);

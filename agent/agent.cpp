@@ -5,19 +5,16 @@
 #include <QCommandLineParser>
 #include <iostream>
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("DLP Agent");
     QCoreApplication::setApplicationVersion("1.0");
 
-    // Парсинг аргументов командной строки
     QCommandLineParser parser;
     parser.setApplicationDescription("DLP Agent - мониторинг файлов на наличие конфиденциальной информации");
     parser.addHelpOption();
     parser.addVersionOption();
 
-    // Опция для указания конфиг-файла
     QCommandLineOption configOption(
         {"c", "config"},
         "Путь к конфигурационному файлу",
@@ -25,7 +22,6 @@ int main(int argc, char *argv[])
     );
     parser.addOption(configOption);
 
-    // Опция для указания имени агента
     QCommandLineOption nameOption(
         {"n", "name"},
         "Имя агента (по умолчанию: имя пользователя системы)",
@@ -33,7 +29,6 @@ int main(int argc, char *argv[])
     );
     parser.addOption(nameOption);
 
-    // Аргументы: директории для мониторинга
     parser.addPositionalArgument(
         "directories",
         "Директории для мониторинга (можно указать несколько)",
@@ -49,13 +44,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Инициализация логгера
     Logger::instance().initialize("", true);
     Logger::instance().setLogLevel(LogLevel::INFO);
 
     LOG_INFO("Запуск DLP агента...");
 
-    // Загрузка конфигурации
     ConfigManager& config = ConfigManager::instance();
     if (parser.isSet(configOption)) {
         if (!config.loadConfig(parser.value(configOption))) {
@@ -68,7 +61,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Установка имени агента
     QString agentName;
     if (parser.isSet(nameOption)) {
         agentName = parser.value(nameOption);
@@ -78,11 +70,9 @@ int main(int argc, char *argv[])
     config.set("agent/hostname", agentName);
     LOG_INFO(QString("Имя агента: %1").arg(agentName));
 
-    // Установка директорий мониторинга
     config.set("monitoring/directories", directories);
     LOG_INFO(QString("Мониторинг директорий: %1").arg(directories.join(", ")));
 
-    // Создание и запуск агента
     Agent agent;
 
     QObject::connect(&app, &QCoreApplication::aboutToQuit, [&agent]() {
@@ -100,6 +90,5 @@ int main(int argc, char *argv[])
     }
 
     LOG_INFO("DLP агент успешно запущен. Для остановки нажмите Ctrl+C");
-
     return app.exec();
 }

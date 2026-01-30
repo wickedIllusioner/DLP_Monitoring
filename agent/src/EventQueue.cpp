@@ -6,18 +6,15 @@
 
 
 EventQueue::EventQueue(QObject* parent)
-    : QObject(parent)
-{
+    : QObject(parent) {
     LOG_DEBUG("EventQueue инициализирован");
 }
 
-EventQueue::~EventQueue()
-{
+EventQueue::~EventQueue() {
     LOG_DEBUG("EventQueue уничтожен");
 }
 
-void EventQueue::enqueue(const QJsonObject& event)
-{
+void EventQueue::enqueue(const QJsonObject& event) {
     QMutexLocker locker(&m_mutex);
 
     m_queue.enqueue(event);
@@ -28,8 +25,7 @@ void EventQueue::enqueue(const QJsonObject& event)
     emit eventAdded(queueSize);
 }
 
-QJsonObject EventQueue::dequeue()
-{
+QJsonObject EventQueue::dequeue() {
     QMutexLocker locker(&m_mutex);
 
     if (m_queue.isEmpty()) {
@@ -50,20 +46,17 @@ QJsonObject EventQueue::dequeue()
     return event;
 }
 
-bool EventQueue::isEmpty() const
-{
+bool EventQueue::isEmpty() const {
     QMutexLocker locker(&m_mutex);
     return m_queue.isEmpty();
 }
 
-int EventQueue::size() const
-{
+int EventQueue::size() const {
     QMutexLocker locker(&m_mutex);
     return m_queue.size();
 }
 
-void EventQueue::clear()
-{
+void EventQueue::clear() {
     QMutexLocker locker(&m_mutex);
 
     int clearedCount = m_queue.size();
@@ -72,8 +65,7 @@ void EventQueue::clear()
     LOG_INFO(QString("Очередь очищена. Удалено событий: %1").arg(clearedCount));
 }
 
-bool EventQueue::saveToFile(const QString& filePath)
-{
+bool EventQueue::saveToFile(const QString& filePath) {
     QMutexLocker locker(&m_mutex);
 
     if (m_queue.isEmpty()) {
@@ -107,8 +99,7 @@ bool EventQueue::saveToFile(const QString& filePath)
     return false;
 }
 
-bool EventQueue::loadFromFile(const QString& filePath)
-{
+bool EventQueue::loadFromFile(const QString& filePath) {
     QMutexLocker locker(&m_mutex);
 
     if (!QFile::exists(filePath)) {

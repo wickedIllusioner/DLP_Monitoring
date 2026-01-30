@@ -22,7 +22,7 @@ func InitLogger() zerolog.Logger {
 		Logger()
 
 	// Уровень логирования
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.SetGlobalLevel(zerolog.WarnLevel)
 	log.Logger = logger
 
 	return logger

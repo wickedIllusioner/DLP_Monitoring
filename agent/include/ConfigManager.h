@@ -14,6 +14,7 @@ public:
     static ConfigManager& instance();
 
     bool loadConfig(const QString& configPath = "");
+    QString getOsInfo() const;
     QVariant get(const QString& key, const QVariant& defVal = QVariant()) const;
     void set(const QString& key, const QVariant& value);
     bool saveConfig();

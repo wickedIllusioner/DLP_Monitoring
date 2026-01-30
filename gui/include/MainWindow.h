@@ -111,10 +111,6 @@ private:
     QTimer *m_autoRefreshTimer;
 
     QSortFilterProxyModel* m_incidentsProxyModel;
-
-    // bool isAgentProcessRunning(const QString& agentName);
-    // void saveRunningAgentsToSettings();
-    // void loadRunningAgentsFromSettings();
 };
 
 #endif //MAINWINDOW_H

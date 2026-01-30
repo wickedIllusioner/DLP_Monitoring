@@ -4,6 +4,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QJsonDocument>
+#include <QNetworkInterface>
 
 Agent::Agent(QObject* parent)
     : QObject(parent)
@@ -108,9 +109,23 @@ void Agent::stop() {
 void Agent::registerAgent() {
     QString agentId = m_config.agentId();
     QString hostname = m_config.get("agent/hostname").toString();
+    QString osInfo = m_config.getOsInfo();
+
+    QString ipAddr;
+    QList<QHostAddress> addresses = QNetworkInterface::allAddresses();
+    for (const QHostAddress &address : addresses) {
+        if (address.protocol() == QAbstractSocket::IPv4Protocol &&
+            address != QHostAddress(QHostAddress::LocalHost)) {
+            ipAddr = address.toString();
+            break;
+            }
+    }
+    if (ipAddr.isEmpty()) {
+        ipAddr = "127.0.0.1";
+    }
 
     LOG_INFO(QString("Регистрация агента: %1").arg(agentId));
-    m_network.registerAgent(agentId, hostname);
+    m_network.registerAgent(agentId, hostname, ipAddr, osInfo);
 }
 
 void Agent::loadPolicies() {

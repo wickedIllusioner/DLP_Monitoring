@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QStandardPaths>
 #include <QHostInfo>
+#include <QRegularExpression>
 
 
 ConfigManager &ConfigManager::instance() {
@@ -16,20 +17,17 @@ ConfigManager &ConfigManager::instance() {
 
 ConfigManager::ConfigManager(QObject *parent)
     : QObject(parent)
-    , m_loaded(false)
-{
+    , m_loaded(false) {
     initDefaults();
 }
 
 
 void ConfigManager::initDefaults() {
-    // Базовые настройки
     m_settings["agent/id"] = generateAgentId();
     m_settings["agent/hostname"] = QHostInfo::localHostName();
     m_settings["agent/scan_interval"] = 60;
     m_settings["agent/max_file_size"] = 10*1024*1024;
 
-    // Мониторинг
     m_settings["monitoring/dirs"] = QStringList()
         << QDir::homePath() + "/Documents"
         << QDir::homePath() + "/Desktop";
@@ -37,19 +35,16 @@ void ConfigManager::initDefaults() {
         << "*.tmp" << "*.log" << "*.cache";
     m_settings["monitoring/recursive"] = true;
 
-    // Сервер
     m_settings["server/url"] = "http://127.0.0.1:8080";
     m_settings["server/heartbeat_interval"] = 300;
     m_settings["server/timeout"] = 30000;
 
-    // Логи
     m_settings["logs/level"] = "info";
     m_settings["logs/file"] = QDir::tempPath() + "/dlp_agent.log";
 }
 
 
-bool ConfigManager::loadConfig(const QString& configPath)
-{
+bool ConfigManager::loadConfig(const QString& configPath) {
     QString path = configPath.isEmpty() ? findConfigFile() : configPath;
 
     if (path.isEmpty() || !QFile::exists(path)) {
@@ -67,7 +62,6 @@ bool ConfigManager::loadConfig(const QString& configPath)
 
     m_configPath = path;
 
-    // Загрузка групп
     QStringList groups = settings.childGroups();
     for (const QString& group : groups) {
         settings.beginGroup(group);
@@ -79,7 +73,6 @@ bool ConfigManager::loadConfig(const QString& configPath)
         settings.endGroup();
     }
 
-    // Нормализация путей
     QStringList dirs = get("monitoring/directories").toStringList();
     for (int i = 0; i < dirs.size(); ++i) {
         dirs[i] = normalizePath(dirs[i]);
@@ -92,14 +85,12 @@ bool ConfigManager::loadConfig(const QString& configPath)
 }
 
 
-QVariant ConfigManager::get(const QString& key, const QVariant& defaultValue) const
-{
+QVariant ConfigManager::get(const QString& key, const QVariant& defaultValue) const {
     return m_settings.value(key, defaultValue);
 }
 
 
-void ConfigManager::set(const QString& key, const QVariant& value)
-{
+void ConfigManager::set(const QString& key, const QVariant& value) {
     if (m_settings.value(key) != value) {
         m_settings[key] = value;
         emit configChanged(key, value);
@@ -108,8 +99,7 @@ void ConfigManager::set(const QString& key, const QVariant& value)
 }
 
 
-bool ConfigManager::saveConfig()
-{
+bool ConfigManager::saveConfig() {
     if (m_configPath.isEmpty()) {
         LOG_ERROR("Не указан путь для сохранения конфигурации");
         return false;
@@ -136,51 +126,43 @@ bool ConfigManager::saveConfig()
         }
         settings.endGroup();
     }
-
     settings.sync();
 
     if (settings.status() == QSettings::NoError) {
         LOG_INFO("Конфигурация сохранена");
         return true;
     }
-
     LOG_ERROR("Ошибка сохранения конфигурации");
     return false;
 }
 
 
-QString ConfigManager::agentId() const
-{
+QString ConfigManager::agentId() const {
     return get("agent/id").toString();
 }
 
 
-QString ConfigManager::serverUrl() const
-{
+QString ConfigManager::serverUrl() const {
     return get("server/url").toString();
 }
 
 
-QStringList ConfigManager::monitorDirs() const
-{
+QStringList ConfigManager::monitorDirs() const {
     return get("monitoring/directories").toStringList();
 }
 
 
-QString ConfigManager::logLevel() const
-{
+QString ConfigManager::logLevel() const {
     return get("logging/level").toString();
 }
 
 
-QString ConfigManager::logFile() const
-{
+QString ConfigManager::logFile() const {
     return normalizePath(get("logging/file").toString());
 }
 
 
-QString ConfigManager::normalizePath(const QString& path) const
-{
+QString ConfigManager::normalizePath(const QString& path) const {
     QString normalized = path.trimmed();
 
     if (normalized.startsWith("~/")) {
@@ -191,8 +173,7 @@ QString ConfigManager::normalizePath(const QString& path) const
 }
 
 
-QString ConfigManager::generateAgentId() const
-{
+QString ConfigManager::generateAgentId() const {
     QString hostname = QHostInfo::localHostName();
     QString timestamp = QDateTime::currentDateTime().toString("yyyyMMddhhmmss");
     return QString("%1-%2").arg(hostname).arg(timestamp);
@@ -213,4 +194,36 @@ QString ConfigManager::findConfigFile() const {
     }
 
     return QString();
+}
+
+
+QString ConfigManager::getOsInfo() const {
+#ifdef Q_OS_WIN
+    return "Windows";
+#elif defined(Q_OS_MAC)
+    return "macOS";
+#elif defined(Q_OS_LINUX)
+    QFile osRelease("/etc/os-release");
+    if (osRelease.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&osRelease);
+        QString content = in.readAll();
+
+        QRegularExpression regex("PRETTY_NAME=\"([^\"]+)\"");
+        QRegularExpressionMatch match = regex.match(content);
+        if (match.hasMatch()) {
+            return match.captured(1);
+        }
+
+        regex.setPattern("NAME=\"([^\"]+)\"");
+        match = regex.match(content);
+        if (match.hasMatch()) {
+            return match.captured(1);
+        }
+    }
+    return "Linux";
+#elif defined(Q_OS_UNIX)
+    return "Unix";
+#else
+    return "Unknown";
+#endif
 }

@@ -14,8 +14,8 @@ ApiClient::ApiClient(QObject *parent)
     : QObject(parent)
     , m_manager(new QNetworkAccessManager(this))
     , m_refreshTimer(new QTimer(this))
-    , m_baseUrl("http://127.0.0.1:8080")
-{
+    , m_baseUrl("http://127.0.0.1:8080") {
+
     // Настройка таймера для автообновления
     m_refreshTimer->setSingleShot(false);
     connect(m_refreshTimer, &QTimer::timeout, this, &ApiClient::onAutoRefresh);
@@ -25,48 +25,41 @@ ApiClient::ApiClient(QObject *parent)
             this, &ApiClient::onReplyFinished);
 }
 
-void ApiClient::setBaseUrl(const QString &url)
-{
+void ApiClient::setBaseUrl(const QString &url) {
     m_baseUrl = url;
 }
 
-void ApiClient::setApiKey(const QString &apiKey)
-{
+void ApiClient::setApiKey(const QString &apiKey) {
     m_apiKey = apiKey;
 }
 
 
-void ApiClient::fetchPolicies()
-{
+void ApiClient::fetchPolicies() {
     QNetworkRequest request = createRequest("/api/v1/policies");
     m_manager->get(request);
 }
 
-void ApiClient::createPolicy(const QJsonObject &policy)
-{
+void ApiClient::createPolicy(const QJsonObject &policy) {
     QNetworkRequest request = createRequest("/api/v1/policies");
 
     QJsonDocument doc(policy);
     m_manager->post(request, doc.toJson());
 }
 
-void ApiClient::updatePolicy(int id, const QJsonObject &policy)
-{
+void ApiClient::updatePolicy(int id, const QJsonObject &policy) {
     QNetworkRequest request = createRequest(QString("/api/v1/policies/%1").arg(id));
 
     QJsonDocument doc(policy);
     m_manager->put(request, doc.toJson());
 }
 
-void ApiClient::deletePolicy(int id)
-{
+void ApiClient::deletePolicy(int id) {
     QNetworkRequest request = createRequest(QString("/api/v1/policies/%1").arg(id));
     m_manager->deleteResource(request);
 }
 
 
-void ApiClient::fetchIncidents(const QDateTime &from, const QDateTime &to)
-{
+void ApiClient::fetchIncidents(const QDateTime &from, const QDateTime &to) {
     QUrl url = QUrl(m_baseUrl + "/api/v1/incidents");
     QUrlQuery query;
 
@@ -87,8 +80,7 @@ void ApiClient::fetchIncidents(const QDateTime &from, const QDateTime &to)
     m_manager->get(request);
 }
 
-void ApiClient::updateIncidentStatus(int id, const QString &status, const QString &resolvedBy)
-{
+void ApiClient::updateIncidentStatus(int id, const QString &status, const QString &resolvedBy) {
     QNetworkRequest request = createRequest(QString("/api/v1/incidents/%1/status").arg(id));
 
     QJsonObject json;
@@ -103,8 +95,7 @@ void ApiClient::updateIncidentStatus(int id, const QString &status, const QStrin
 }
 
 
-void ApiClient::fetchEvents(int limit)
-{
+void ApiClient::fetchEvents(int limit) {
     QUrl url = QUrl(m_baseUrl + "/api/v1/events");
     QUrlQuery query;
 
@@ -122,42 +113,36 @@ void ApiClient::fetchEvents(int limit)
     m_manager->get(request);
 }
 
-void ApiClient::fetchAgents()
-{
+void ApiClient::fetchAgents() {
     QNetworkRequest request = createRequest("/api/v1/agents");
     m_manager->get(request);
 }
 
-void ApiClient::fetchStatistics()
-{
+void ApiClient::fetchStatistics() {
     QNetworkRequest request = createRequest("/api/v1/incidents/stats");
     m_manager->get(request);
 }
 
 
-void ApiClient::startAutoRefresh(int intervalMs)
-{
+void ApiClient::startAutoRefresh(int intervalMs) {
     m_refreshTimer->setInterval(intervalMs);
     m_refreshTimer->start();
     qDebug() << "Auto-refresh started with interval:" << intervalMs << "ms";
 }
 
-void ApiClient::stopAutoRefresh()
-{
+void ApiClient::stopAutoRefresh() {
     m_refreshTimer->stop();
     qDebug() << "Auto-refresh stopped";
 }
 
-void ApiClient::onAutoRefresh()
-{
+void ApiClient::onAutoRefresh() {
     fetchIncidents();
     fetchStatistics();
     fetchAgents();
 }
 
 
-QNetworkRequest ApiClient::createRequest(const QString &endpoint) const
-{
+QNetworkRequest ApiClient::createRequest(const QString &endpoint) const {
     QUrl url(m_baseUrl + endpoint);
     QNetworkRequest request(url);
 
@@ -171,8 +156,7 @@ QNetworkRequest ApiClient::createRequest(const QString &endpoint) const
     return request;
 }
 
-void ApiClient::handleError(QNetworkReply *reply)
-{
+void ApiClient::handleError(QNetworkReply *reply) {
     QString errorMsg;
 
     if (reply->error() != QNetworkReply::NoError) {
@@ -188,8 +172,7 @@ void ApiClient::handleError(QNetworkReply *reply)
     emit networkError(reply->error(), reply->errorString());
 }
 
-void ApiClient::onReplyFinished(QNetworkReply *reply)
-{
+void ApiClient::onReplyFinished(QNetworkReply *reply) {
     reply->deleteLater();
 
     if (reply->error() != QNetworkReply::NoError) {
@@ -247,7 +230,7 @@ void ApiClient::onReplyFinished(QNetworkReply *reply)
             QStringList parts = urlPath.split('/');
             if (parts.size() > 0) {
                 bool ok;
-                int id = parts.at(parts.size() - 2).toInt(&ok); // Предпоследняя часть - ID
+                int id = parts.at(parts.size() - 2).toInt(&ok);
                 if (ok) {
                     emit incidentStatusUpdated(id);
                 }

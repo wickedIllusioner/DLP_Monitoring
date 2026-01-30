@@ -21,11 +21,10 @@ using namespace std;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_apiClient(new ApiClient(this))
-    , m_autoRefreshTimer(new QTimer(this))
-{
+    , m_autoRefreshTimer(new QTimer(this)) {
+
     setupUI();
     setupConnections();
-
     onRefreshData();
     m_autoRefreshTimer->start(30000);
 }
@@ -79,13 +78,10 @@ void MainWindow::setupToolBar() {
     QToolBar *toolBar = addToolBar("Панель инструментов");
     toolBar->setMovable(false);
 
-    // Кнопка обновления
     m_btnRefresh = new QPushButton("Обновить", this);
     toolBar->addWidget(m_btnRefresh);
-
     toolBar->addSeparator();
 
-    // Статус подключения
     QLabel *statusLabel = new QLabel("Статус:", this);
     toolBar->addWidget(statusLabel);
 
@@ -129,9 +125,9 @@ void MainWindow::setupTabs() {
 
     // Таблица инцидентов
     m_incidentsTable = new QTableView(m_incidentsTab);
-    m_incidentsModel = new QStandardItemModel(0, 8, this);
+    m_incidentsModel = new QStandardItemModel(0, 6, this);
     m_incidentsModel->setHorizontalHeaderLabels(
-        QStringList() << "ID" << "Файл" << "Путь" << "Серьезность" << "Статус" << "Политика" << "Агент" << "Время");
+        QStringList() << "Файл" << "Путь" << "Серьезность" << "Статус" << "Политика" << "Агент" << "Время");
 
     m_incidentsProxyModel = new QSortFilterProxyModel(this);
     m_incidentsProxyModel->setSourceModel(m_incidentsModel);
@@ -139,13 +135,12 @@ void MainWindow::setupTabs() {
     m_incidentsTable->setModel(m_incidentsProxyModel);
 
     m_incidentsTable->horizontalHeader()->setStretchLastSection(false);
-    m_incidentsTable->setColumnWidth(0, 50);   // ID
-    m_incidentsTable->setColumnWidth(1, 150);  // Файл
-    m_incidentsTable->setColumnWidth(2, 400);  // Путь
-    m_incidentsTable->setColumnWidth(3, 100);  // Серьезность
-    m_incidentsTable->setColumnWidth(4, 150);  // Политика
-    m_incidentsTable->setColumnWidth(5, 150);  // Агент
-    m_incidentsTable->setColumnWidth(6, 150);  // Время
+    m_incidentsTable->setColumnWidth(0, 150);  // Файл
+    m_incidentsTable->setColumnWidth(1, 400);  // Путь
+    m_incidentsTable->setColumnWidth(2, 100);  // Серьезность
+    m_incidentsTable->setColumnWidth(3, 150);  // Политика
+    m_incidentsTable->setColumnWidth(4, 250);  // Агент
+    m_incidentsTable->setColumnWidth(5, 150);  // Время
     m_incidentsTable->setWordWrap(true);
 
     m_incidentsTable->setSortingEnabled(true);
@@ -177,9 +172,9 @@ void MainWindow::setupTabs() {
 
     // Таблица политик
     m_policiesTable = new QTableView(m_policiesTab);
-    m_policiesModel = new QStandardItemModel(0, 5, this);
+    m_policiesModel = new QStandardItemModel(0, 4, this);
     m_policiesModel->setHorizontalHeaderLabels(
-        QStringList() << "ID" << "Название" << "Паттерн" << "Серьезность" << "Активна");
+        QStringList() << "Название" << "Паттерн" << "Серьезность" << "Активна");
     m_policiesTable->setModel(m_policiesModel);
     m_policiesTable->horizontalHeader()->setStretchLastSection(true);
     m_policiesTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -203,9 +198,9 @@ void MainWindow::setupTabs() {
     QVBoxLayout *eventsLayout = new QVBoxLayout(m_eventsTab);
 
     m_eventsTable = new QTableView(m_eventsTab);
-    m_eventsModel = new QStandardItemModel(0, 6, this);
+    m_eventsModel = new QStandardItemModel(0, 5, this);
     m_eventsModel->setHorizontalHeaderLabels(
-        QStringList() << "ID" << "Агент" << "Файл" << "Тип" << "Нарушение" << "Время");
+        QStringList() << "Агент" << "Файл" << "Тип" << "Нарушение" << "Время");
     m_eventsTable->setModel(m_eventsModel);
     m_eventsTable->horizontalHeader()->setStretchLastSection(true);
     m_eventsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -229,9 +224,9 @@ void MainWindow::setupTabs() {
     agentsLayout->addLayout(agentButtonsLayout);
 
     m_agentsTable = new QTableView(m_agentsTab);
-    m_agentsModel = new QStandardItemModel(0, 5, this);
+    m_agentsModel = new QStandardItemModel(0, 4, this);
     m_agentsModel->setHorizontalHeaderLabels(
-        QStringList() << "ID" << "Имя хоста" << "IP" << "ОС" << "Последний контакт");
+        QStringList()  << "Имя агента" << "IP" << "ОС" << "Последний контакт");
     m_agentsTable->setModel(m_agentsModel);
     m_agentsTable->horizontalHeader()->setStretchLastSection(true);
     m_agentsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -398,7 +393,6 @@ void MainWindow::onAddAgent() {
 
         m_runningAgents[agentName] = agentProcess;
         m_agentDirectories[agentName] = directories;
-        // saveRunningAgentsToSettings();
 
         // Подключение сигналов процесса
         connect(agentProcess, &QProcess::started, [this, agentName, directories]() {
@@ -414,7 +408,7 @@ void MainWindow::onAddAgent() {
                 if (exitStatus == QProcess::CrashExit || exitCode != 0) {
                     m_statusLabel->setText(QString("Агент '%1' завершился с ошибкой").arg(agentName));
                 }
-                // Очищаем ресурсы
+
                 if (m_runningAgents.contains(agentName)) {
                     delete m_runningAgents[agentName];
                     m_runningAgents.remove(agentName);
@@ -429,7 +423,7 @@ void MainWindow::onAddAgent() {
 void MainWindow::onAgentDoubleClicked(const QModelIndex &index) {
     if (!index.isValid()) return;
     int row = index.row();
-    QString agentName = m_agentsModel->item(row, 1)->text();
+    QString agentName = m_agentsModel->item(row, 0)->text();
 
     if (m_runningAgents.contains(agentName)) {
         QProcess* agentProcess = m_runningAgents[agentName];
@@ -468,7 +462,6 @@ void MainWindow::onPoliciesFetched(const QJsonArray &policies) {
         m_policies.append(policy);
 
         QList<QStandardItem*> items;
-        items.append(new QStandardItem(QString::number(policy.id)));
         items.append(new QStandardItem(policy.name));
         items.append(new QStandardItem(policy.pattern));
         items.append(new QStandardItem(policy.severity));
@@ -491,22 +484,14 @@ void MainWindow::onIncidentsFetched(const QJsonArray &incidents) {
 
         QList<QStandardItem*> items;
 
-        // ID
-        QStandardItem *idItem = new QStandardItem(QString::number(incident.id));
-        idItem->setEditable(false);
-        items.append(idItem);
-
-        // Файл
         QStandardItem *fileItem = new QStandardItem(incident.fileName);
         fileItem->setEditable(false);
         items.append(fileItem);
 
-        // Путь к файлу
         QStandardItem *filePath = new QStandardItem(incident.filePath);
         filePath->setEditable(false);
         items.append(filePath);
 
-        // Серьезность инцидента
         QStandardItem *severityItem = new QStandardItem(incident.severity);
         severityItem->setEditable(false);
         if (incident.severity == "critical") severityItem->setBackground(Qt::red);
@@ -515,22 +500,18 @@ void MainWindow::onIncidentsFetched(const QJsonArray &incidents) {
         else if (incident.severity == "low") severityItem->setBackground(Qt::green);
         items.append(severityItem);
 
-        // Статус
         QStandardItem *statusItem = new QStandardItem(incident.status);
         statusItem->setEditable(false);
         items.append(statusItem);
 
-        // Политика
         QStandardItem *policyItem = new QStandardItem(incident.policyName);
         policyItem->setEditable(false);
         items.append(policyItem);
 
-        // Агент
         QStandardItem *agentItem = new QStandardItem(incident.agentHostname);
         agentItem->setEditable(false);
         items.append(agentItem);
 
-        // Время
         QStandardItem *timeItem = new QStandardItem(incident.createdAt.toString("dd.MM.yyyy HH:mm"));
         timeItem->setEditable(false);
         items.append(timeItem);
@@ -551,7 +532,6 @@ void MainWindow::onEventsFetched(const QJsonArray &events) {
         m_events.append(event);
 
         QList<QStandardItem*> items;
-        items.append(new QStandardItem(QString::number(event.id)));
         items.append(new QStandardItem(event.agentName.isEmpty() ? event.agentId : event.agentName));
         items.append(new QStandardItem(event.fileName));
         items.append(new QStandardItem(event.eventType));
@@ -560,7 +540,6 @@ void MainWindow::onEventsFetched(const QJsonArray &events) {
 
         m_eventsModel->appendRow(items);
     }
-
     m_statusLabel->setText(QString("События загружены: %1").arg(m_events.size()));
 }
 
@@ -575,7 +554,6 @@ void MainWindow::onAgentsFetched(const QJsonArray &agents) {
         if (agent.isOnline) onlineCount++;
 
         QList<QStandardItem*> items;
-        items.append(new QStandardItem(QString::number(agent.id)));
         items.append(new QStandardItem(agent.hostname));
         items.append(new QStandardItem(agent.ipAddress));
         items.append(new QStandardItem(agent.osInfo));

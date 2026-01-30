@@ -8,33 +8,26 @@
 
 
 PolicyDialog::PolicyDialog(Mode mode, QWidget *parent)
-    : QDialog(parent), m_mode(mode)
-{
+    : QDialog(parent), m_mode(mode) {
     setWindowTitle(m_mode == Create ? "Создать политику" : "Редактировать политику");
     setMinimumWidth(500);
     setupUI();
 }
 
-void PolicyDialog::setupUI()
-{
+void PolicyDialog::setupUI() {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
-
-    // Form layout для полей ввода
     QFormLayout *formLayout = new QFormLayout();
 
-    // Название политики
     m_nameEdit = new QLineEdit(this);
     m_nameEdit->setPlaceholderText("Введите название политики");
     m_nameEdit->setMaxLength(100);
     formLayout->addRow("Название:", m_nameEdit);
 
-    // Описание
     m_descriptionEdit = new QTextEdit(this);
     m_descriptionEdit->setMaximumHeight(80);
     m_descriptionEdit->setPlaceholderText("Описание политики (необязательно)");
     formLayout->addRow("Описание:", m_descriptionEdit);
 
-    // Регулярное выражение
     QGroupBox *patternGroup = new QGroupBox("Регулярное выражение для поиска", this);
     QVBoxLayout *patternLayout = new QVBoxLayout(patternGroup);
 
@@ -44,25 +37,20 @@ void PolicyDialog::setupUI()
 
     QHBoxLayout *patternButtonsLayout = new QHBoxLayout();
     m_testButton = new QPushButton("Проверить паттерн", patternGroup);
-    QLabel *patternHint = new QLabel("Регулярные выражения C++", patternGroup);
-    patternHint->setStyleSheet("color: gray; font-size: 10pt;");
 
     patternButtonsLayout->addWidget(m_testButton);
     patternButtonsLayout->addStretch();
-    patternButtonsLayout->addWidget(patternHint);
 
     patternLayout->addWidget(m_patternEdit);
     patternLayout->addLayout(patternButtonsLayout);
 
     formLayout->addRow(patternGroup);
 
-    // Уровень серьезности
     m_severityCombo = new QComboBox(this);
     m_severityCombo->addItems({"info", "low", "medium", "high", "critical"});
     m_severityCombo->setCurrentText("medium");
     formLayout->addRow("Уровень серьезности:", m_severityCombo);
 
-    // Активность
     m_activeCheck = new QCheckBox("Политика активна", this);
     m_activeCheck->setChecked(true);
     formLayout->addRow("", m_activeCheck);
@@ -85,14 +73,12 @@ void PolicyDialog::setupUI()
 
     mainLayout->addLayout(buttonLayout);
 
-    // Подключение сигналов
     connect(m_saveButton, &QPushButton::clicked, this, &PolicyDialog::onSaveClicked);
     connect(m_cancelButton, &QPushButton::clicked, this, &PolicyDialog::reject);
     connect(m_testButton, &QPushButton::clicked, this, &PolicyDialog::onTestPattern);
 }
 
-void PolicyDialog::setPolicyData(const DlpPolicy &policy)
-{
+void PolicyDialog::setPolicyData(const DlpPolicy &policy) {
     m_policy = policy;
 
     m_nameEdit->setText(policy.name);
@@ -102,8 +88,7 @@ void PolicyDialog::setPolicyData(const DlpPolicy &policy)
     m_activeCheck->setChecked(policy.isActive);
 }
 
-DlpPolicy PolicyDialog::getPolicyData() const
-{
+DlpPolicy PolicyDialog::getPolicyData() const {
     DlpPolicy policy;
 
     policy.name = m_nameEdit->text().trimmed();
@@ -119,9 +104,7 @@ DlpPolicy PolicyDialog::getPolicyData() const
     return policy;
 }
 
-void PolicyDialog::onSaveClicked()
-{
-    // Валидация данных
+void PolicyDialog::onSaveClicked() {
     QString name = m_nameEdit->text().trimmed();
     QString pattern = m_patternEdit->toPlainText().trimmed();
 
@@ -136,12 +119,10 @@ void PolicyDialog::onSaveClicked()
         m_patternEdit->setFocus();
         return;
     }
-
     accept();
 }
 
-void PolicyDialog::onTestPattern()
-{
+void PolicyDialog::onTestPattern() {
     QString pattern = m_patternEdit->toPlainText().trimmed();
 
     if (pattern.isEmpty()) {
@@ -160,7 +141,7 @@ void PolicyDialog::onTestPattern()
     layout->addWidget(infoLabel);
 
     QTextEdit *testTextEdit = new QTextEdit(&testDialog);
-    testTextEdit->setPlaceholderText("Пример: Номер карты: 4111-1111-1111-1111");
+    testTextEdit->setPlaceholderText("Введите текст");
     testTextEdit->setMaximumHeight(100);
     layout->addWidget(testTextEdit);
 
@@ -171,8 +152,7 @@ void PolicyDialog::onTestPattern()
     resultLabel->setWordWrap(true);
     layout->addWidget(resultLabel);
 
-    // Подключение кнопки проверки
-    connect(testBtn, &QPushButton::clicked, [&testDialog, pattern, testTextEdit, resultLabel]() {
+    connect(testBtn, &QPushButton::clicked, [pattern, testTextEdit, resultLabel]() {
         QString testText = testTextEdit->toPlainText();
 
         if (testText.isEmpty()) {
