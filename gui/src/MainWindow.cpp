@@ -388,7 +388,7 @@ void MainWindow::onAddAgent() {
 
         QProcess *agentProcess = new QProcess(this);
         QString programPath = QCoreApplication::applicationDirPath() + "/dlp-agent";
-        agentProcess->setProgram("./dlp-agent");
+        agentProcess->setProgram(programPath);
         agentProcess->setArguments(args);
 
         m_runningAgents[agentName] = agentProcess;

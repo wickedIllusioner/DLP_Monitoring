@@ -23,7 +23,7 @@ services:
 
   backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: dlp-server
     env_file:
@@ -34,7 +34,7 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./logs:/app/logs
+      - ./backend/logs:/app/logs
     networks:
       - dlp-network
     restart: unless-stopped
