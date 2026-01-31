@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.28)
 project(DLP_Agent)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -10,7 +10,7 @@ set(CMAKE_AUTORCC ON)
 
 find_package(Qt6 COMPONENTS Core Network REQUIRED)
 
-add_executable(DLP_Agent main.cpp
+add_executable(DLP_Agent agent.cpp
         src/Logger.cpp
         src/ConfigManager.cpp
         src/NetworkManager.cpp

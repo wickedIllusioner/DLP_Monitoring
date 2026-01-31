@@ -1,4 +1,3 @@
-# Основные пути
 AGENT_DIR = agent
 GUI_DIR = gui
 BACKEND_DIR = backend
@@ -96,9 +95,7 @@ dev-deps:
 	@echo "Установка зависимостей..."
 	# Для Ubuntu/Debian
 	sudo apt-get update
-	sudo apt-get install -y cmake build-essential qt6-base-dev libqt6charts6-dev
-	# Для агента
-	sudo apt-get install -y libinotifytools-dev
+	sudo apt-get install -y cmake build-essential qt6-base-dev libqt6charts6-dev qt6-tools-dev qt6-l10n-tools
 	# Для сборки AppImage
 	sudo snap install linuxdeploy --classic
 
@@ -122,7 +119,7 @@ help:
 	@echo "  make down         - Остановить сервисы Backend"
 	@echo "  make restart      - Перезапустить сервисы Backend"
 	@echo "  make clean        - Очистить собранные компоненты и прекратить работу"
-	@echo "  make rebuild      - Full clean rebuild"
+	@echo "  make rebuild      - Полная пересборка проекта"
 	@echo "  make logs         - Посмотреть логи сервера"
 	@echo "  make status       - Проверить состояние сервера"
 	@echo "  make dev-deps     - Установить необходимые зависимости"

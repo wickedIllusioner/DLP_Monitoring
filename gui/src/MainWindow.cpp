@@ -496,8 +496,8 @@ void MainWindow::onIncidentsFetched(const QJsonArray &incidents) {
         severityItem->setEditable(false);
         if (incident.severity == "critical") severityItem->setBackground(Qt::red);
         else if (incident.severity == "high") severityItem->setBackground(QColor(255, 165, 0));
-        else if (incident.severity == "medium") severityItem->setBackground(Qt::yellow);
-        else if (incident.severity == "low") severityItem->setBackground(Qt::green);
+        else if (incident.severity == "medium") severityItem->setBackground(QColor(177, 202, 16));
+        else if (incident.severity == "low") severityItem->setBackground(QColor(36, 206, 10));
         items.append(severityItem);
 
         QStandardItem *statusItem = new QStandardItem(incident.status);

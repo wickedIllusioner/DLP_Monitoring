@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.28)
 project(DLP_GUI)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -7,12 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
-
-#include(FetchContent)
-#FetchContent_Declare(Qlementine
-#        GIT_REPOSITORY "https://github.com/oclero/qlementine.git"
-#)
-#FetchContent_MakeAvailable(Qlementine)
 
 find_package(Qt6 COMPONENTS Core Widgets Network Charts Concurrent REQUIRED)
 
@@ -50,5 +44,4 @@ target_link_libraries(DLP_GUI PRIVATE
         Qt6::Widgets
         Qt6::Charts
         Qt6::Concurrent
-#        qlementine
 )
