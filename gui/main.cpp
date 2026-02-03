@@ -1,17 +1,22 @@
-#include <QApplication>
-#include <QStyleFactory>
-#include <QPalette>
-
 #include "include/MainWindow.h"
+#include "include/LoginDialog.h"
+#include <QApplication>
+#include <QMessageBox>
+#include <QObject>
+#include <QStyleFactory>
 
-int main(int argc, char *argv[])
-{
+
+int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
-    QApplication::setApplicationName("DLP Monitoring System");
-    QApplication::setOrganizationName("DLP Labs");
-    QApplication::setApplicationVersion("1.0.0");
+    LoginDialog loginDialog;
 
+    if (loginDialog.exec() != QDialog::Accepted) {
+        return 0;
+    }
+
+    QApplication::setApplicationName("DLP Monitoring System");
+    QApplication::setApplicationVersion("1.0.0");
     QApplication::setStyle(QStyleFactory::create("Fusion"));
 
     MainWindow mainWindow;

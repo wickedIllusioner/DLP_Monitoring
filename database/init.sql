@@ -1,5 +1,3 @@
--- database/init.sql
-
 -- Таблица агентов
 CREATE TABLE IF NOT EXISTS agents (
     id SERIAL PRIMARY KEY,
@@ -51,11 +49,25 @@ CREATE TABLE IF NOT EXISTS incidents (
     resolved_by VARCHAR(100)
 );
 
+-- Таблица пользователей
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT true
+);
+
 CREATE INDEX idx_incidents_created_at ON incidents(created_at);
 CREATE INDEX idx_incidents_status ON incidents(status);
 CREATE INDEX idx_incidents_severity ON incidents(severity);
 CREATE INDEX idx_events_detected_at ON events(detected_at);
 CREATE INDEX idx_agents_last_seen ON agents(last_seen);
+CREATE INDEX idx_users_username ON users(username);
+
+-- Пользователи системы по умолчанию
+INSERT INTO users (username, password_hash) VALUES
+    ('admin', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')
+    ON CONFLICT (username) DO NOTHING;
 
 -- Триггер для обновления updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()

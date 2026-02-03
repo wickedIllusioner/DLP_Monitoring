@@ -33,6 +33,22 @@ void ApiClient::setApiKey(const QString &apiKey) {
     m_apiKey = apiKey;
 }
 
+void ApiClient::login(const QString &username, const QString &password) {
+    QNetworkRequest request = createRequest("/api/v1/auth/login");
+
+    QJsonObject json;
+    json["username"] = username;
+    json["password"] = password;
+
+    QJsonDocument doc(json);
+    QNetworkReply *reply = m_manager->post(request, doc.toJson());
+}
+
+void ApiClient::logout() {
+    stopAutoRefresh();
+    m_apiKey.clear();
+}
+
 
 void ApiClient::fetchPolicies() {
     QNetworkRequest request = createRequest("/api/v1/policies");

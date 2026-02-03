@@ -65,6 +65,8 @@ func main() {
 
 	// API
 	router.Route("/api/v1", func(r chi.Router) {
+		r.Post("/auth/login", handler.Login)
+
 		// Агенты
 		r.Route("/agents", func(r chi.Router) {
 			r.Post("/register", handler.RegisterAgent)

@@ -35,5 +35,8 @@ type Store interface {
 	UpdateIncidentStatus(ctx context.Context, incident *models.Incident) error
 	GetIncidentStats(ctx context.Context) (*models.IncidentStats, error)
 
+	// Пользователи
+	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
+
 	Close() error
 }

@@ -11,7 +11,6 @@ set(CMAKE_AUTORCC ON)
 find_package(Qt6 COMPONENTS Core Widgets Network Charts Concurrent REQUIRED)
 
 add_executable(DLP_GUI main.cpp
-        # Основные компоненты
         src/MainWindow.cpp
         src/ApiClient.cpp
         src/DataModels.cpp
@@ -25,7 +24,6 @@ add_executable(DLP_GUI main.cpp
         include/AgentCreationDialog.h
         include/AgentInfoDialog.h
 
-        # Виджеты
         widgets/src/ChartWidget.cpp
         widgets/include/ChartWidget.h
         widgets/src/StatisticsTabWidget.cpp
@@ -37,6 +35,8 @@ add_executable(DLP_GUI main.cpp
         widgets/src/BarChartWidget.cpp
         widgets/include/StatsSummaryWidget.h
         widgets/src/StatsSummaryWidget.cpp
+        include/LoginDialog.h
+        src/LoginDialog.cpp
 )
 target_link_libraries(DLP_GUI PRIVATE
         Qt6::Core

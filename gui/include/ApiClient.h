@@ -14,18 +14,15 @@ class ApiClient : public QObject {
 public:
     explicit ApiClient(QObject *parent = nullptr);
 
-    // Базовые методы
     void setBaseUrl(const QString &url);
     void setApiKey(const QString &apiKey);
     QString getBaseUrl() { return m_baseUrl; }
 
-    // Методы для политик
     void fetchPolicies();
     void createPolicy(const QJsonObject &policy);
     void updatePolicy(int id, const QJsonObject &policy);
     void deletePolicy(int id);
 
-    // Методы для инцидентов
     void fetchIncidents(const QDateTime &from = QDateTime(),
                         const QDateTime &to = QDateTime());
     void updateIncidentStatus(int id, const QString &status,
@@ -35,12 +32,13 @@ public:
     void fetchAgents();
     void fetchStatistics();
 
-    // Периодическое обновление
     void startAutoRefresh(int intervalMs = 30000);
     void stopAutoRefresh();
 
+    void login(const QString &username, const QString &password);
+    void logout();
+
 signals:
-    // Сигналы успешного выполнения
     void policiesFetched(const QJsonArray &policies);
     void policyCreated(const QJsonObject &policy);
     void policyUpdated(int id);
@@ -53,7 +51,6 @@ signals:
     void agentsFetched(const QJsonArray &agents);
     void statisticsFetched(const QJsonObject &stats);
 
-    // Сигналы ошибок
     void errorOccurred(const QString &error);
     void networkError(int code, const QString &message);
 
